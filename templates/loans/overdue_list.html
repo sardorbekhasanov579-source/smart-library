@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% load library_extras %}
+{% block title %}Muddati o'tganlar — {{ LIBRARY_NAME }}{% endblock %}
+{% block page_title %}Muddati o'tgan kitoblar{% endblock %}
+
+{% block content %}
+<div class="toolbar">
+  <span class="strong">Qarzdorlar ro'yxati</span>
+  <span class="spacer"></span>
+  <a href="{% url 'reports:home' %}?type=overdue" class="btn btn-light">📊 Hisobot</a>
+  <a href="{% url 'reports:excel' %}?type=overdue" class="btn btn-green">⬇ Excel</a>
+  <a href="{% url 'reports:pdf' %}?type=overdue" class="btn btn-danger">⬇ PDF</a>
+</div>
+
+<div class="card">
+  <div class="table-wrap">
+    <table class="data">
+      <thead><tr><th class="num">№</th><th>Kitobxon</th><th>Telefon</th><th>Kitob</th>
+        <th>Inventar</th><th>Muddat</th><th>Kechikish</th><th></th></tr></thead>
+      <tbody>
+      {% for loan in loans %}
+        <tr>
+          <td class="num">{{ forloop.counter }}</td>
+          <td><a href="{% url 'readers:detail' loan.reader.pk %}"><b>{{ loan.reader.full_name }}</b></a>
+            <div class="small muted">{{ loan.reader.reader_code }}</div></td>
+          <td class="small nowrap">{{ loan.reader.phone|default:"—" }}</td>
+          <td class="small">{{ loan.copy.book.title|truncatechars:32 }}</td>
+          <td class="small nowrap">{{ loan.copy.inventory_number }}</td>
+          <td class="small nowrap">{{ loan.due_date|date:"d.m.Y" }}</td>
+          <td><span class="badge badge-red">{{ loan.overdue_days }} kun</span></td>
+          <td><a href="{% url 'loans:return' %}?q={{ loan.copy.inventory_number }}" class="btn btn-green btn-sm">Qaytarish</a></td>
+        </tr>
+      {% empty %}
+        <tr><td colspan="8" class="empty"><span class="big">✅</span>Muddati o'tgan kitoblar yo'q</td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% include "_pagination.html" %}
+</div>
+{% endblock %}

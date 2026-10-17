@@ -1,0 +1,135 @@
+{% load static library_extras %}<!DOCTYPE html>
+<html lang="uz">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}{{ LIBRARY_NAME }}{% endblock %}</title>
+  <link rel="stylesheet" href="{% static 'css/style.css' %}">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>&#128218;</text></svg>">
+</head>
+<body>
+<div class="layout">
+
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-brand">
+      <span class="logo">📚</span>
+      <span>{{ LIBRARY_NAME }}</span>
+    </div>
+
+    <nav class="sidebar-nav">
+      <a href="{% url 'core:dashboard' %}" class="{% if request.resolver_match.url_name == 'dashboard' %}active{% endif %}">
+        <span class="ico">🏠</span> Bosh sahifa
+      </a>
+      <a href="{% url 'books:list' %}" class="{% if request.resolver_match.app_name == 'books' %}active{% endif %}">
+        <span class="ico">📖</span> Kitoblar
+      </a>
+
+      {% if can_manage %}
+        <a href="{% url 'readers:list' %}" class="{% if request.resolver_match.app_name == 'readers' %}active{% endif %}">
+          <span class="ico">👥</span> Kitobxonlar
+        </a>
+
+        <div class="nav-section">Operatsiyalar</div>
+        <a href="{% url 'loans:issue' %}" class="{% if request.resolver_match.url_name == 'issue' %}active{% endif %}">
+          <span class="ico">⬆️</span> Kitob berish
+        </a>
+        <a href="{% url 'loans:return' %}" class="{% if request.resolver_match.url_name == 'return' %}active{% endif %}">
+          <span class="ico">⬇️</span> Kitob qaytarish
+        </a>
+        <a href="{% url 'loans:list' %}" class="{% if request.resolver_match.url_name == 'list' and request.resolver_match.app_name == 'loans' %}active{% endif %}">
+          <span class="ico">🔁</span> Barcha operatsiyalar
+        </a>
+        <a href="{% url 'loans:overdue' %}" class="{% if request.resolver_match.url_name == 'overdue' %}active{% endif %}">
+          <span class="ico">⏰</span> Muddati o'tganlar
+        </a>
+
+        <div class="nav-section">Testlar</div>
+        <a href="{% url 'quizzes:quiz_list' %}" class="{% if request.resolver_match.url_name == 'quiz_list' or request.resolver_match.url_name == 'quiz_detail' or request.resolver_match.url_name == 'question_edit' %}active{% endif %}">
+          <span class="ico">📝</span> Test to'plamlari
+        </a>
+        <a href="{% url 'quizzes:assignment_list' %}" class="{% if request.resolver_match.url_name == 'assignment_list' or request.resolver_match.url_name == 'assignment_detail' or request.resolver_match.url_name == 'attempt_detail' %}active{% endif %}">
+          <span class="ico">📨</span> Topshiriqlar
+        </a>
+        {% if is_admin_role %}
+          <a href="{% url 'quizzes:telegram_panel' %}" class="{% if request.resolver_match.url_name == 'telegram_panel' %}active{% endif %}">
+            <span class="ico">🤖</span> Telegram va AI
+          </a>
+        {% endif %}
+      {% endif %}
+
+      <div class="nav-section">Ma'lumot</div>
+      <a href="{% url 'core:search' %}" class="{% if request.resolver_match.url_name == 'search' %}active{% endif %}">
+        <span class="ico">🔍</span> Qidiruv
+      </a>
+      <a href="{% url 'catalog:home' %}" class="{% if request.resolver_match.app_name == 'catalog' %}active{% endif %}">
+        <span class="ico">🗂️</span> Katalog
+      </a>
+      {% if can_manage %}
+        <a href="{% url 'reports:home' %}" class="{% if request.resolver_match.app_name == 'reports' %}active{% endif %}">
+          <span class="ico">📊</span> Hisobotlar
+        </a>
+      {% endif %}
+
+      {% if is_admin_role %}
+        <div class="nav-section">Boshqaruv</div>
+        <a href="{% url 'users:list' %}" class="{% if request.resolver_match.app_name == 'users' and request.resolver_match.url_name != 'profile' %}active{% endif %}">
+          <span class="ico">👤</span> Foydalanuvchilar
+        </a>
+        <a href="{% url 'core:audit_log' %}" class="{% if request.resolver_match.url_name == 'audit_log' %}active{% endif %}">
+          <span class="ico">📋</span> Amallar jurnali
+        </a>
+        <a href="{% url 'core:settings' %}" class="{% if request.resolver_match.url_name == 'settings' %}active{% endif %}">
+          <span class="ico">⚙️</span> Sozlamalar
+        </a>
+      {% endif %}
+    </nav>
+
+    <div class="sidebar-foot">
+      {{ TODAY|date:"d.m.Y" }} · v1.0
+    </div>
+  </aside>
+
+  <div class="main">
+    <header class="topbar">
+      <button class="menu-toggle" onclick="document.getElementById('sidebar').classList.toggle('open')">☰</button>
+      <h1>{% block page_title %}Bosh sahifa{% endblock %}</h1>
+
+      <form class="search" method="get" action="{% url 'core:search' %}">
+        <input type="search" name="q" placeholder="Kitob, muallif yoki ISBN bo'yicha qidirish..."
+               value="{{ request.GET.q|default:'' }}">
+        <button class="btn btn-primary btn-sm" type="submit">Qidirish</button>
+      </form>
+
+      <div class="user-chip">
+        <div class="avatar">{{ user.full_name|initials }}</div>
+        <div class="meta">
+          <b>{{ user.full_name }}</b>
+          <span>{{ user.get_role_display }}</span>
+        </div>
+        <a href="{% url 'users:profile' %}" class="btn btn-light btn-sm" title="Profil">⚙</a>
+        <form method="post" action="{% url 'users:logout' %}" class="inline-form">
+          {% csrf_token %}
+          <button class="btn btn-light btn-sm" type="submit" title="Chiqish">⏻</button>
+        </form>
+      </div>
+    </header>
+
+    <main class="content">
+      {% if messages %}
+        <div class="messages">
+          {% for message in messages %}
+            <div class="msg msg-{{ message.tags|default:'info' }}">
+              <span>{% if message.tags == 'success' %}✔{% elif message.tags == 'error' %}✕{% elif message.tags == 'warning' %}⚠{% else %}ℹ{% endif %}</span>
+              <span>{{ message }}</span>
+            </div>
+          {% endfor %}
+        </div>
+      {% endif %}
+
+      {% block content %}{% endblock %}
+    </main>
+  </div>
+</div>
+{% block scripts %}{% endblock %}
+</body>
+</html>

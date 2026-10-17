@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+{% load library_extras %}
+{% block title %}Foydalanuvchilar — {{ LIBRARY_NAME }}{% endblock %}
+{% block page_title %}Foydalanuvchilar va rollar{% endblock %}
+
+{% block content %}
+<div class="toolbar">
+  <form method="get" style="display:flex;gap:8px">
+    <input type="search" name="q" class="form-input" value="{{ filters.q|default:'' }}" placeholder="Ism yoki login">
+    <select name="role" class="form-select"><option value="">Barcha rollar</option>
+      {% for code, label in roles %}<option value="{{ code }}" {% if filters.role == code %}selected{% endif %}>{{ label }}</option>{% endfor %}
+    </select>
+    <button class="btn btn-primary" type="submit">Filtrlash</button>
+  </form>
+  <span class="spacer"></span>
+  <a href="{% url 'users:create' %}" class="btn btn-primary">➕ Yangi foydalanuvchi</a>
+</div>
+
+<div class="card">
+  <div class="table-wrap">
+    <table class="data">
+      <thead><tr><th>F.I.Sh.</th><th>Login</th><th>Rol</th><th>Email</th><th>Holat</th><th>Yaratilgan</th><th></th></tr></thead>
+      <tbody>
+      {% for u in users %}
+        <tr>
+          <td><div style="display:flex;align-items:center;gap:9px">
+            <div class="avatar" style="width:30px;height:30px;font-size:11px">{{ u.full_name|initials }}</div>
+            <b>{{ u.full_name }}</b></div></td>
+          <td class="small">{{ u.username }}</td>
+          <td><span class="badge {% if u.role == 'admin' %}badge-amber{% elif u.role == 'librarian' %}badge-blue{% else %}badge-gray{% endif %}">{{ u.get_role_display }}</span></td>
+          <td class="small muted">{{ u.email|default:"—" }}</td>
+          <td>{{ u|status_badge }}</td>
+          <td class="small muted nowrap">{{ u.created_at|date:"d.m.Y" }}</td>
+          <td><div class="row-actions">
+            <a href="{% url 'users:update' u.pk %}" class="btn btn-light btn-sm">✎</a>
+            {% if u.pk != user.pk %}
+              <form method="post" action="{% url 'users:toggle_status' u.pk %}" class="inline-form">
+                {% csrf_token %}
+                <button class="btn btn-light btn-sm" type="submit">{% if u.status == 'active' %}🚫{% else %}✔{% endif %}</button>
+              </form>
+              <a href="{% url 'users:delete' u.pk %}" class="btn btn-danger btn-sm">🗑</a>
+            {% endif %}
+          </div></td>
+        </tr>
+      {% empty %}
+        <tr><td colspan="7" class="empty"><span class="big">👤</span>Foydalanuvchi topilmadi</td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% include "_pagination.html" %}
+</div>
+{% endblock %}

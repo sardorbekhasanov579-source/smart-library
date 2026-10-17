@@ -1,0 +1,98 @@
+{% load static %}<!DOCTYPE html>
+<html lang="uz">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#1e3a5f">
+  <meta name="description" content="Qo'lingizdagi kitoblar, qaytarish muddatlari va kitob bo'yicha testlar.">
+  <title>{% block title %}Kutubxona{% endblock %}</title>
+
+  <link rel="stylesheet" href="{% static 'css/app.css' %}">
+  <link rel="manifest" href="{% url 'manifest' %}">
+  <link rel="icon" type="image/png" sizes="192x192" href="{% static 'img/icon-192.png' %}">
+  <link rel="apple-touch-icon" href="{% static 'img/apple-touch-icon.png' %}">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="{{ LIBRARY_NAME|default:'Kutubxona' }}">
+</head>
+<body>
+<header class="app-top">
+  <span class="logo">📚</span>
+  <span class="name">{{ LIBRARY_NAME|default:"Kutubxona" }}</span>
+  <span class="spacer"></span>
+  {% block top_actions %}{% endblock %}
+</header>
+
+<div class="wrap">
+  {% if messages %}
+    {% for message in messages %}
+      <div class="msg msg-{{ message.tags|default:'info' }}">{{ message }}</div>
+    {% endfor %}
+  {% endif %}
+
+  {% block content %}{% endblock %}
+
+  <div class="install-bar" id="install-bar" hidden>
+    <div>
+      <div class="t">Ilovani o'rnating</div>
+      <div class="small muted">Telefoningiz bosh ekranidan bir bosishda ochiladi</div>
+    </div>
+    <button class="btn btn-primary btn-sm" id="install-btn">O'rnatish</button>
+    <button class="install-close" id="install-close" aria-label="Yopish">✕</button>
+  </div>
+
+  <div class="foot">{{ LIBRARY_NAME|default:"Kutubxona" }}</div>
+</div>
+
+<script>
+(function () {
+  // Service worker — statik fayllarni keshlaydi va offline sahifani ko'rsatadi
+  if ("serviceWorker" in navigator) {
+    window.addEventListener("load", function () {
+      navigator.serviceWorker.register("{% url 'service_worker' %}").catch(function () {});
+    });
+  }
+
+  // "Bosh ekranga qo'shish" taklifi (Android/Chrome)
+  var bar = document.getElementById("install-bar");
+  var btn = document.getElementById("install-btn");
+  var close = document.getElementById("install-close");
+  var deferred = null;
+  var HIDDEN_KEY = "install_bar_hidden";
+
+  function hidden() {
+    try { return localStorage.getItem(HIDDEN_KEY) === "1"; } catch (e) { return false; }
+  }
+
+  window.addEventListener("beforeinstallprompt", function (event) {
+    event.preventDefault();
+    deferred = event;
+    if (bar && !hidden()) bar.hidden = false;
+  });
+
+  if (btn) {
+    btn.addEventListener("click", function () {
+      if (!deferred) return;
+      deferred.prompt();
+      deferred.userChoice.finally(function () {
+        deferred = null;
+        if (bar) bar.hidden = true;
+      });
+    });
+  }
+
+  if (close) {
+    close.addEventListener("click", function () {
+      if (bar) bar.hidden = true;
+      try { localStorage.setItem(HIDDEN_KEY, "1"); } catch (e) {}
+    });
+  }
+
+  window.addEventListener("appinstalled", function () {
+    if (bar) bar.hidden = true;
+  });
+})();
+</script>
+{% block scripts %}{% endblock %}
+</body>
+</html>

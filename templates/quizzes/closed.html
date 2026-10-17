@@ -1,0 +1,32 @@
+{% extends "quizzes/public_base.html" %}
+{% block title %}Test yopilgan{% endblock %}
+
+{% block content %}
+<div class="card center" style="padding:34px 20px">
+  {% if reason == "expired" %}
+    <div style="font-size:42px">⌛️</div>
+    <h1>Test muddati tugagan</h1>
+    <p class="muted small">
+      «{{ assignment.book.title }}» kitobi bo'yicha testni topshirish muddati
+      {% if assignment.deadline %}{{ assignment.deadline|date:"d.m.Y H:i" }} da{% endif %}
+      yakunlangan.
+    </p>
+    <p class="muted small">Kutubxonachiga murojaat qilib, yangi muddat so'rashingiz mumkin.</p>
+  {% elif reason == "no_questions" %}
+    <div style="font-size:42px">🛠</div>
+    <h1>Test hali tayyor emas</h1>
+    <p class="muted small">
+      «{{ assignment.book.title }}» kitobi uchun savollar hali kiritilmagan.
+      Kutubxonachi tez orada to'ldiradi — keyinroq qayta urinib ko'ring.
+    </p>
+  {% else %}
+    <div style="font-size:42px">🔒</div>
+    <h1>Test yopilgan</h1>
+    <p class="muted small">Bu test uchun urinishlar tugagan.</p>
+  {% endif %}
+
+  <a href="{% url 'quizzes:portal' %}" class="btn btn-light btn-block" style="margin-top:16px">
+    🏠 Shaxsiy kabinet
+  </a>
+</div>
+{% endblock %}

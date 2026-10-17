@@ -1,0 +1,111 @@
+{% extends "base.html" %}
+{% load library_extras quiz_extras %}
+{% block title %}Topshiriq — {{ LIBRARY_NAME }}{% endblock %}
+{% block page_title %}Test topshirig'i{% endblock %}
+
+{% block content %}
+<div class="toolbar">
+  <a href="{% url 'quizzes:assignment_list' %}" class="btn btn-light">‹ Topshiriqlar</a>
+  <span class="spacer"></span>
+  <form method="post" action="{% url 'quizzes:assignment_send' assignment.pk %}" class="inline-form">
+    {% csrf_token %}
+    <button class="btn btn-primary" type="submit" {% if not has_telegram %}disabled{% endif %}>
+      📤 {% if assignment.sent_at %}Qayta yuborish{% else %}Telegramga yuborish{% endif %}
+    </button>
+  </form>
+</div>
+
+<div class="grid-2">
+  <div>
+    <div class="card mb-2">
+      <div class="card-head">
+        <h2>{{ assignment.quiz.book.title }}</h2>
+        {{ assignment|assignment_badge }}
+      </div>
+      <div class="card-body">
+        <dl class="kv">
+          <dt>Kitobxon</dt>
+          <dd><a href="{{ assignment.reader.get_absolute_url }}">{{ assignment.reader.full_name }}</a>
+            ({{ assignment.reader.reader_code }})</dd>
+          <dt>Muallif</dt><dd>{{ assignment.quiz.book.author.full_name }}</dd>
+          <dt>Test</dt>
+          <dd><a href="{% url 'quizzes:quiz_detail' assignment.quiz_id %}">{{ assignment.quiz.title }}</a></dd>
+          <dt>Savollar soni</dt><dd>{{ assignment.question_count }} ta</dd>
+          <dt>O'tish chegarasi</dt><dd>{{ assignment.pass_percent }}%</dd>
+          <dt>Eng yaxshi natija</dt><dd>{{ assignment.best_percent|percent_badge }}</dd>
+          <dt>Muddat</dt>
+          <dd>{% if assignment.deadline %}{{ assignment.deadline|date:"d.m.Y H:i" }}{% else %}—{% endif %}</dd>
+          <dt>Yaratilgan</dt><dd>{{ assignment.created_at|date:"d.m.Y H:i" }}</dd>
+          <dt>Yuborilgan</dt>
+          <dd>{% if assignment.sent_at %}{{ assignment.sent_at|date:"d.m.Y H:i" }}{% else %}—{% endif %}</dd>
+          <dt>Yakunlangan</dt>
+          <dd>{% if assignment.finished_at %}{{ assignment.finished_at|date:"d.m.Y H:i" }}{% else %}—{% endif %}</dd>
+          {% if assignment.loan %}
+            <dt>Operatsiya</dt>
+            <dd><a href="{% url 'loans:detail' assignment.loan_id %}">
+              Qaytarish: {{ assignment.loan.due_date|date:"d.m.Y" }}</a></dd>
+          {% endif %}
+          <dt>Adminga xabar</dt>
+          <dd>{% if assignment.admin_notified %}Yuborilgan{% else %}—{% endif %}</dd>
+        </dl>
+        {% if assignment.delivery_note %}
+          <p class="small muted" style="margin-top:10px">ℹ️ {{ assignment.delivery_note }}</p>
+        {% endif %}
+        {% if not has_telegram %}
+          <div class="msg msg-warning" style="margin-top:12px">
+            <span>⚠</span>
+            <span>Kitobxonning Telegram hisobi ulanmagan. Havolani qo'lda bering.</span>
+          </div>
+        {% endif %}
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-head"><h2>Urinishlar</h2></div>
+      <div class="table-wrap">
+        <table class="data">
+          <thead><tr><th>Boshlangan</th><th>Yakunlangan</th>
+            <th class="text-center">To'g'ri</th><th class="text-center">Natija</th><th></th></tr></thead>
+          <tbody>
+          {% for attempt in attempts %}
+            <tr>
+              <td class="small nowrap">{{ attempt.started_at|date:"d.m.Y H:i" }}</td>
+              <td class="small nowrap">
+                {% if attempt.finished_at %}{{ attempt.finished_at|date:"d.m.Y H:i" }}
+                {% else %}<span class="badge badge-amber">Davom etmoqda</span>{% endif %}
+              </td>
+              <td class="text-center small">{{ attempt.correct_count }}/{{ attempt.total_questions }}</td>
+              <td class="text-center">{{ attempt.percent|percent_badge }}</td>
+              <td>
+                {% if attempt.finished_at %}
+                  <a href="{% url 'quizzes:attempt_detail' attempt.pk %}"
+                     class="btn btn-light btn-sm">Javoblar</a>
+                {% endif %}
+              </td>
+            </tr>
+          {% empty %}
+            <tr><td colspan="5" class="small muted">Hali urinish yo'q.</td></tr>
+          {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <div>
+    <div class="card">
+      <div class="card-head"><h2>Maxfiy havola</h2></div>
+      <div class="card-body">
+        <p class="small muted">Kitobxon shu havola orqali testni yechadi:</p>
+        <input class="form-input" value="{{ link }}" readonly onclick="this.select()"
+               style="font-size:12px">
+        <p class="small muted" style="margin-top:8px">
+          Havolani faqat shu kitobxonga bering — unda login talab qilinmaydi.
+        </p>
+        <a href="{{ assignment.get_absolute_url }}" target="_blank"
+           class="btn btn-light btn-sm btn-block" style="margin-top:8px">🔗 Ochib ko'rish</a>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

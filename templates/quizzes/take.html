@@ -1,0 +1,103 @@
+{% extends "quizzes/public_base.html" %}
+{% load library_extras %}
+{% block title %}{{ assignment.book.title }} — test{% endblock %}
+
+{% block content %}
+<div class="card">
+  <div class="book-head">
+    <span class="emoji">📖</span>
+    <div>
+      <div class="title">{{ assignment.book.title }}</div>
+      <div class="small muted">{{ assignment.book.author.full_name }}</div>
+    </div>
+  </div>
+  <div class="meta-row">
+    <span class="chip">{{ total }} ta savol</span>
+    <span class="chip plain">O'tish: {{ assignment.pass_percent }}%</span>
+    {% if assignment.deadline %}
+      <span class="chip warn">Muddat: {{ assignment.deadline|date:"d.m.Y H:i" }}</span>
+    {% endif %}
+  </div>
+  <p class="small muted" style="margin:12px 0 0">
+    Assalomu alaykum, <b>{{ assignment.reader.full_name }}</b>!
+    Kitobni o'qiganingizni tasdiqlash uchun savollarga javob bering.
+    Har bir savolda bitta to'g'ri javob bor.
+  </p>
+</div>
+
+<div class="progress">
+  <div class="bar"><span id="bar"></span></div>
+  <div class="text"><b id="done">0</b> / {{ total }} savolga javob berildi</div>
+</div>
+
+<form method="post" id="quiz-form">
+  {% csrf_token %}
+  {% if confirm %}<input type="hidden" name="confirm" value="1">{% endif %}
+
+  {% for question in questions %}
+    <div class="card q-card">
+      <div class="q-num">SAVOL {{ forloop.counter }}</div>
+      <div class="q-text">{{ question.text|linebreaksbr }}</div>
+      {% with picked=selected|getitem:question.pk %}
+      {% for choice in question.choices.all %}
+        <label class="opt">
+          <input type="radio" name="q_{{ question.pk }}" value="{{ choice.pk }}"
+                 {% if picked == choice.pk %}checked{% endif %}>
+          <span class="box">
+            <span class="letter">{{ forloop.counter0|add:65|stringformat:"c" }}</span>
+            <span>{{ choice.text }}</span>
+          </span>
+        </label>
+      {% endfor %}
+      {% endwith %}
+    </div>
+  {% endfor %}
+
+  <div class="submit-bar">
+    <button class="btn btn-primary btn-block" type="submit" id="submit-btn">
+      {% if confirm %}Javobsiz savollar bilan yakunlash{% else %}✓ Testni yakunlash{% endif %}
+    </button>
+    <p class="small muted center" style="margin:8px 0 0">
+      Yakunlagandan so'ng javoblarni o'zgartirib bo'lmaydi.
+    </p>
+  </div>
+</form>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function () {
+  var form = document.getElementById('quiz-form');
+  var total = {{ total }};
+  var bar = document.getElementById('bar');
+  var done = document.getElementById('done');
+
+  function update() {
+    var names = {};
+    form.querySelectorAll('input[type=radio]:checked').forEach(function (el) {
+      names[el.name] = true;
+    });
+    var count = Object.keys(names).length;
+    done.textContent = count;
+    bar.style.width = total ? (count * 100 / total) + '%' : '0%';
+  }
+
+  form.addEventListener('change', update);
+  update();
+
+  form.addEventListener('submit', function (event) {
+    var names = {};
+    form.querySelectorAll('input[type=radio]:checked').forEach(function (el) {
+      names[el.name] = true;
+    });
+    var left = total - Object.keys(names).length;
+    if (left > 0 && !confirm(left + ' ta savol javobsiz. Shunday yakunlaysizmi?')) {
+      event.preventDefault();
+      return;
+    }
+    document.getElementById('submit-btn').disabled = true;
+    document.getElementById('submit-btn').textContent = 'Yuborilmoqda...';
+  });
+})();
+</script>
+{% endblock %}

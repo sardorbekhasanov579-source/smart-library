@@ -1,0 +1,77 @@
+{% extends "quizzes/public_base.html" %}
+{% block title %}Natija — {{ assignment.book.title }}{% endblock %}
+
+{% block content %}
+{% if attempt %}
+  <div class="card score">
+    <div class="ring {% if attempt.passed %}pass{% else %}fail{% endif %}">
+      {{ attempt.percent }}%
+    </div>
+    <div class="verdict">
+      {% if attempt.passed %}✅ Test topshirildi{% else %}❌ Test o'tmadi{% endif %}
+    </div>
+    <p class="small muted" style="margin:8px 0 0">
+      {{ attempt.correct_count }} / {{ attempt.total_questions }} ta to'g'ri javob
+      · kerakli chegara {{ assignment.pass_percent }}%
+    </p>
+    <div class="meta-row" style="justify-content:center">
+      <span class="chip plain">{{ assignment.book.title }}</span>
+    </div>
+    {% if attempt.passed %}
+      <p class="small muted" style="margin:14px 0 0">
+        Rahmat! Kutubxonachiga «kitob o'qilgan» xabari yuborildi.
+      </p>
+    {% else %}
+      <p class="small muted" style="margin:14px 0 0">
+        Kutubxonachiga natija yuborildi. Kitobni yana bir ko'rib chiqishni tavsiya qilamiz.
+      </p>
+    {% endif %}
+  </div>
+
+  {% if show_answers and answers %}
+    <div class="card">
+      <h2>Javoblar tahlili</h2>
+      {% for answer in answers %}
+        <div class="ans">
+          <div class="q">
+            {% if answer.is_correct %}✅{% else %}❌{% endif %}
+            {{ forloop.counter }}. {{ answer.question.text|linebreaksbr }}
+          </div>
+          <ul>
+            {% for choice in answer.question.choices.all %}
+              <li class="{% if choice.is_correct %}right{% elif answer.choice_id == choice.pk %}wrong{% endif %}">
+                <span>
+                  {% if choice.is_correct %}✓{% elif answer.choice_id == choice.pk %}✗{% else %}·{% endif %}
+                </span>
+                <span>{{ choice.text }}</span>
+              </li>
+            {% endfor %}
+          </ul>
+          {% if not answer.choice_id %}
+            <div class="why">Javob berilmagan</div>
+          {% endif %}
+          {% if answer.question.explanation %}
+            <div class="why">💡 {{ answer.question.explanation }}</div>
+          {% endif %}
+        </div>
+      {% endfor %}
+    </div>
+  {% endif %}
+{% else %}
+  <div class="card">
+    <div class="empty">
+      <span class="big">📝</span>
+      Bu test hali yechilmagan.
+    </div>
+    {% if assignment.can_attempt %}
+      <a href="{{ assignment.get_absolute_url }}" class="btn btn-primary btn-block">
+        Testni boshlash
+      </a>
+    {% endif %}
+  </div>
+{% endif %}
+
+<div class="card">
+  <a href="{% url 'quizzes:portal' %}" class="btn btn-light btn-block">🏠 Shaxsiy kabinet</a>
+</div>
+{% endblock %}

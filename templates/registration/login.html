@@ -1,0 +1,48 @@
+{% load static %}<!DOCTYPE html>
+<html lang="uz">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Kirish — {{ LIBRARY_NAME }}</title>
+  <link rel="stylesheet" href="{% static 'css/style.css' %}">
+</head>
+<body class="login-page">
+  <div class="login-card">
+    <div class="brand">
+      <div class="logo">📚</div>
+      <h1>{{ LIBRARY_NAME }}</h1>
+      <p>Kutubxona boshqaruv tizimi</p>
+    </div>
+
+    {% if form.non_field_errors %}
+      <div class="messages">
+        {% for error in form.non_field_errors %}
+          <div class="msg msg-error"><span>✕</span><span>{{ error }}</span></div>
+        {% endfor %}
+      </div>
+    {% endif %}
+
+    <form method="post">
+      {% csrf_token %}
+      <div class="field" style="margin-bottom:14px">
+        <label for="{{ form.username.id_for_label }}">Login</label>
+        {{ form.username }}
+      </div>
+      <div class="field" style="margin-bottom:20px">
+        <label for="{{ form.password.id_for_label }}">Parol</label>
+        {{ form.password }}
+      </div>
+      <button type="submit" class="btn btn-navy btn-block">Tizimga kirish</button>
+      <input type="hidden" name="next" value="{{ next }}">
+    </form>
+
+    <p class="small muted text-center" style="margin-top:18px;margin-bottom:0">
+      Login yoki parolni unutdingizmi? Administratorga murojaat qiling.
+    </p>
+    <p class="small text-center" style="margin-top:14px;margin-bottom:0;
+       padding-top:14px;border-top:1px solid var(--line)">
+      Kitobxonmisiz? <a href="{% url 'quizzes:login' %}">Telefon raqam bilan kirish →</a>
+    </p>
+  </div>
+</body>
+</html>

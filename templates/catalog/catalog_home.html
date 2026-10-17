@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+{% block title %}Katalog — {{ LIBRARY_NAME }}{% endblock %}
+{% block page_title %}Katalog — toifalar va janrlar{% endblock %}
+
+{% block content %}
+<div class="toolbar">
+  <span class="spacer"></span>
+  {% if can_manage %}
+    <a href="{% url 'catalog:category_create' %}" class="btn btn-primary">➕ Yangi toifa</a>
+    <a href="{% url 'catalog:author_create' %}" class="btn btn-light">➕ Yangi muallif</a>
+  {% endif %}
+</div>
+
+<div class="grid-2">
+  <div class="card">
+    <div class="card-head"><h2>Toifalar daraxti</h2></div>
+    <div class="card-body">
+      {% for item in tree %}
+        <div style="margin-bottom:14px">
+          <div style="display:flex;align-items:center;gap:9px">
+            <a href="{% url 'catalog:category_detail' item.node.pk %}"><b>📁 {{ item.node.name }}</b></a>
+            <span class="badge badge-gray">{{ item.node.books_total }}</span>
+            {% if can_manage %}
+              <a href="{% url 'catalog:category_update' item.node.pk %}" class="small">✎</a>
+            {% endif %}
+          </div>
+          {% for child in item.children %}
+            <div style="padding-left:26px;margin-top:5px;display:flex;align-items:center;gap:9px">
+              <a href="{% url 'catalog:category_detail' child.pk %}" class="small">📄 {{ child.name }}</a>
+              <span class="badge badge-gray">{{ child.books_total }}</span>
+              {% if can_manage %}<a href="{% url 'catalog:category_update' child.pk %}" class="small">✎</a>{% endif %}
+            </div>
+          {% endfor %}
+        </div>
+      {% empty %}
+        <div class="empty"><span class="big">🗂️</span>Toifalar qo'shilmagan</div>
+      {% endfor %}
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-head"><h2>Mualliflar</h2><a href="{% url 'catalog:author_list' %}" class="small">Barchasi →</a></div>
+    <div class="table-wrap">
+      <table class="data">
+        <thead><tr><th>Muallif</th><th>Tug'ilgan</th><th>Kitoblar</th></tr></thead>
+        <tbody>
+        {% for author in authors|slice:":15" %}
+          <tr>
+            <td><a href="{% url 'catalog:author_detail' author.pk %}">{{ author.full_name }}</a></td>
+            <td class="small muted">{{ author.birth_year|default:"—" }}</td>
+            <td><span class="badge badge-blue">{{ author.books_total }}</span></td>
+          </tr>
+        {% empty %}
+          <tr><td colspan="3" class="empty">Mualliflar yo'q</td></tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% block page_title %}{{ author.full_name }}{% endblock %}
+{% block content %}
+<div class="toolbar">
+  <a href="{% url 'catalog:author_list' %}" class="btn btn-light">← Mualliflar</a>
+  <span class="spacer"></span>
+  {% if can_manage %}<a href="{% url 'catalog:author_update' author.pk %}" class="btn btn-light">✎ Tahrirlash</a>{% endif %}
+</div>
+<div class="grid-2">
+  <div class="card">
+    <div class="card-head"><h2>{{ author.full_name }}</h2></div>
+    <div class="card-body">
+      <dl class="kv">
+        <dt>Tug'ilgan yili</dt><dd>{{ author.birth_year|default:"—" }}</dd>
+        <dt>Kitoblar soni</dt><dd>{{ books|length }}</dd>
+      </dl>
+      {% if author.description %}<p class="small muted" style="margin-top:12px">{{ author.description|linebreaksbr }}</p>{% endif %}
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-head"><h2>Kitoblari</h2></div>
+    <div class="table-wrap">
+      <table class="data">
+        <thead><tr><th>Kitob</th><th>Toifa</th><th>Mavjud</th></tr></thead>
+        <tbody>
+        {% for book in books %}
+          <tr><td><a href="{{ book.get_absolute_url }}">{{ book.title }}</a></td>
+            <td class="small">{{ book.category.name }}</td>
+            <td class="text-center">{{ book.available_quantity }}/{{ book.total_quantity }}</td></tr>
+        {% empty %}
+          <tr><td colspan="3" class="empty">Kitob yo'q</td></tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}

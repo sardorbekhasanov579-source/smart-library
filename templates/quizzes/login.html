@@ -1,0 +1,90 @@
+{% extends "quizzes/public_base.html" %}
+{% block title %}Kirish — kitobxon kabineti{% endblock %}
+
+{% block content %}
+<div class="card">
+  <h1>Kitobxon kabineti</h1>
+  <p class="small muted">
+    Qo'lingizdagi kitoblar va testlarni ko'rish uchun telefon raqamingiz bo'yicha kiring.
+    Tasdiqlash kodi <b>Telegram</b> orqali yuboriladi.
+  </p>
+</div>
+
+{% if step == 1 %}
+  <div class="card">
+    <h2>1-qadam · Telefon raqam</h2>
+    <form method="post">
+      {% csrf_token %}
+      <input type="hidden" name="step" value="phone">
+      <div class="field">
+        <label class="field-label" for="{{ phone_form.phone.id_for_label }}">
+          {{ phone_form.phone.label }}
+        </label>
+        <input type="tel" name="phone" id="{{ phone_form.phone.id_for_label }}"
+               value="{{ phone_form.phone.value|default:'' }}"
+               placeholder="+998 90 123 45 67" inputmode="tel" required>
+        {% for error in phone_form.phone.errors %}<div class="error">{{ error }}</div>{% endfor %}
+      </div>
+      <button class="btn btn-primary btn-block" type="submit">Kod yuborish</button>
+    </form>
+  </div>
+
+  <div class="card">
+    <h2>Telegram hisobingiz ulanmaganmi?</h2>
+    <p class="small muted">
+      Birinchi marta kirayotgan bo'lsangiz, avval kutubxona botini ochib
+      <b>/start</b> bosing va <b>«Raqamimni yuborish»</b> tugmasi orqali telefon
+      raqamingizni tasdiqlang. Shundan keyin shu sahifaga qaytib kiring.
+    </p>
+    {% if bot_link %}
+      <a href="{{ bot_link }}" target="_blank" rel="noopener"
+         class="btn btn-green btn-block">🤖 Botni ochish — @{{ bot_username }}</a>
+      <p class="small muted center" style="margin:10px 0 0">
+        Telegramda qidirsangiz: <b>@{{ bot_username }}</b>
+      </p>
+    {% else %}
+      <p class="small muted mb-0">
+        Bot manzili hali sozlanmagan — kutubxonachidan bot nomini so'rang.
+      </p>
+    {% endif %}
+  </div>
+{% else %}
+  <div class="card">
+    <h2>2-qadam · Tasdiqlash kodi</h2>
+    <p class="small muted">{{ phone }} raqamiga ulangan Telegramga 6 xonali kod yubordik.</p>
+    <form method="post">
+      {% csrf_token %}
+      <input type="hidden" name="step" value="code">
+      <div class="field">
+        <input type="text" name="code" class="code-input" maxlength="6"
+               inputmode="numeric" autocomplete="one-time-code" placeholder="000000"
+               required autofocus>
+        {% if code_form %}
+          {% for error in code_form.code.errors %}<div class="error">{{ error }}</div>{% endfor %}
+        {% endif %}
+      </div>
+      <button class="btn btn-primary btn-block" type="submit">Kirish</button>
+    </form>
+
+    <div style="display:flex;gap:8px;margin-top:12px">
+      <form method="post" style="flex:1">
+        {% csrf_token %}
+        <input type="hidden" name="step" value="resend">
+        <button class="btn btn-light btn-block" type="submit">🔄 Kodni qayta yuborish</button>
+      </form>
+      <form method="post" style="flex:1">
+        {% csrf_token %}
+        <input type="hidden" name="step" value="reset">
+        <button class="btn btn-light btn-block" type="submit">✎ Raqamni o'zgartirish</button>
+      </form>
+    </div>
+
+    {% if bot_link %}
+      <p class="small muted center" style="margin:14px 0 0">
+        Kod kelmadimi? Botni ochib tekshiring:
+        <a href="{{ bot_link }}" target="_blank" rel="noopener">@{{ bot_username }}</a>
+      </p>
+    {% endif %}
+  </div>
+{% endif %}
+{% endblock %}

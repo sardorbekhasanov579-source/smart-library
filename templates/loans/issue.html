@@ -1,0 +1,124 @@
+{% extends "base.html" %}
+{% load library_extras %}
+{% block title %}Kitob berish — {{ LIBRARY_NAME }}{% endblock %}
+{% block page_title %}Kitob berish{% endblock %}
+
+{% block content %}
+<div class="grid-2">
+  <div class="card">
+    <div class="card-head">
+      <h2>Yangi operatsiya</h2>
+      <span class="small muted">Bugun berilgan: {{ today_count }} ta</span>
+    </div>
+    <div class="card-body">
+
+      {% if form.non_field_errors %}
+        <div class="messages">
+          {% for error in form.non_field_errors %}
+            <div class="msg msg-error"><span>✕</span><span>{{ error }}</span></div>
+          {% endfor %}
+        </div>
+      {% endif %}
+
+      <div class="card" style="background:var(--blue-soft);border-color:#c9e0fb;margin-bottom:18px;box-shadow:none">
+        <div class="card-body" style="padding:12px 14px">
+          <div class="small strong" style="margin-bottom:6px">Inventar raqami yoki QR kod bo'yicha tez qidirish</div>
+          <div style="display:flex;gap:8px">
+            <input type="text" id="codeInput" class="form-input" placeholder="INV-0001-001 yoki QR kod">
+            <button type="button" class="btn btn-navy" onclick="lookupCopy()">Topish</button>
+          </div>
+          <div id="lookupResult" class="small" style="margin-top:8px"></div>
+        </div>
+      </div>
+
+      <form method="post">
+        {% csrf_token %}
+        <div class="form-grid">
+          {% for field in form %}{% include "_form_field.html" %}{% endfor %}
+        </div>
+        <div class="form-actions">
+          <button class="btn btn-primary" type="submit">⬆️ Kitobni berish</button>
+          <a href="{% url 'core:dashboard' %}" class="btn btn-light">Bekor qilish</a>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div>
+    {% if selected_reader %}
+      <div class="card mb-2">
+        <div class="card-head"><h2>Tanlangan kitobxon</h2>{{ selected_reader|status_badge }}</div>
+        <div class="card-body">
+          <dl class="kv">
+            <dt>F.I.Sh.</dt><dd><b>{{ selected_reader.full_name }}</b></dd>
+            <dt>Kodi</dt><dd>{{ selected_reader.reader_code }}</dd>
+            <dt>Telefon</dt><dd>{{ selected_reader.phone|default:"—" }}</dd>
+            <dt>Qo'lidagi kitob</dt><dd>{{ selected_reader.active_loans_count }}</dd>
+            <dt>Muddati o'tgan</dt>
+            <dd>{% if selected_reader.overdue_loans_count %}
+                  <span class="badge badge-red">{{ selected_reader.overdue_loans_count }}</span>
+                {% else %}<span class="badge badge-green">yo'q</span>{% endif %}</dd>
+          </dl>
+        </div>
+      </div>
+    {% endif %}
+
+    <div class="card">
+      <div class="card-head">
+        <h2>Bugungi operatsiyalar</h2>
+        <a href="{% url 'loans:list' %}" class="small">Barchasi →</a>
+      </div>
+      <div class="table-wrap">
+        <table class="data">
+          <thead><tr><th>Kitobxon</th><th>Kitob</th><th>Muddat</th></tr></thead>
+          <tbody>
+          {% for loan in recent %}
+            <tr>
+              <td class="small"><a href="{% url 'loans:detail' loan.pk %}">{{ loan.reader.full_name }}</a></td>
+              <td class="small">{{ loan.copy.book.title|truncatechars:28 }}</td>
+              <td class="small nowrap">{{ loan.due_date|date:"d.m.Y" }}</td>
+            </tr>
+          {% empty %}
+            <tr><td colspan="3" class="empty">Bugun kitob berilmagan</td></tr>
+          {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function lookupCopy() {
+  const code = document.getElementById('codeInput').value.trim();
+  const box = document.getElementById('lookupResult');
+  if (!code) { box.innerHTML = '<span class="muted">Kodni kiriting</span>'; return; }
+  box.innerHTML = '<span class="muted">Qidirilmoqda...</span>';
+
+  fetch("{% url 'loans:copy_lookup' %}?code=" + encodeURIComponent(code))
+    .then(r => r.json())
+    .then(data => {
+      if (!data.found) {
+        box.innerHTML = '<span style="color:var(--red)">✕ Nusxa topilmadi</span>';
+        return;
+      }
+      if (!data.available) {
+        box.innerHTML = '<span style="color:var(--amber)">⚠ ' + data.title +
+                        ' — hozir mavjud emas (' + data.status + ')</span>';
+        return;
+      }
+      const select = document.getElementById('id_copy');
+      if (select) select.value = data.id;
+      box.innerHTML = '<span style="color:var(--green)">✔ ' + data.title +
+                      ' — ' + data.author + ' (' + data.inventory_number + ') tanlandi</span>';
+    })
+    .catch(() => { box.innerHTML = '<span style="color:var(--red)">Xatolik yuz berdi</span>'; });
+}
+
+document.getElementById('codeInput').addEventListener('keydown', function (e) {
+  if (e.key === 'Enter') { e.preventDefault(); lookupCopy(); }
+});
+</script>
+{% endblock %}

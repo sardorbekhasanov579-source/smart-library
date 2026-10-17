@@ -1,0 +1,18 @@
+{% load library_extras %}
+{% if is_paginated %}
+<div class="pagination">
+  {% if page_obj.has_previous %}
+    <a href="?{% query_replace page=1 %}">« Birinchi</a>
+    <a href="?{% query_replace page=page_obj.previous_page_number %}">‹ Oldingi</a>
+  {% else %}
+    <span class="disabled">« Birinchi</span>
+  {% endif %}
+  <span class="current">{{ page_obj.number }} / {{ page_obj.paginator.num_pages }}</span>
+  {% if page_obj.has_next %}
+    <a href="?{% query_replace page=page_obj.next_page_number %}">Keyingi ›</a>
+    <a href="?{% query_replace page=page_obj.paginator.num_pages %}">Oxirgi »</a>
+  {% else %}
+    <span class="disabled">Keyingi ›</span>
+  {% endif %}
+</div>
+{% endif %}

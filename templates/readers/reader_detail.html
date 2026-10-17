@@ -1,0 +1,95 @@
+{% extends "base.html" %}
+{% load library_extras %}
+{% block title %}{{ reader.full_name }} — {{ LIBRARY_NAME }}{% endblock %}
+{% block page_title %}Kitobxon kartasi{% endblock %}
+
+{% block content %}
+<div class="toolbar">
+  <a href="{% url 'readers:list' %}" class="btn btn-light">← Kitobxonlar</a>
+  <span class="spacer"></span>
+  <a href="{% url 'readers:update' reader.pk %}" class="btn btn-light">✎ Tahrirlash</a>
+  {% if reader.status == 'active' %}
+    <a href="{% url 'loans:issue' %}?reader={{ reader.pk }}" class="btn btn-primary">⬆️ Kitob berish</a>
+  {% endif %}
+  <form method="post" action="{% url 'readers:toggle_status' reader.pk %}" class="inline-form">
+    {% csrf_token %}
+    <button class="btn {% if reader.status == 'active' %}btn-amber{% else %}btn-green{% endif %}" type="submit">
+      {% if reader.status == 'active' %}🚫 Bloklash{% else %}✔ Faollashtirish{% endif %}
+    </button>
+  </form>
+  <a href="{% url 'readers:delete' reader.pk %}" class="btn btn-danger">🗑</a>
+</div>
+
+<div class="stat-grid">
+  <div class="stat"><div class="icon i-blue">📖</div>
+    <div><div class="label">Qo'lidagi kitoblar</div><div class="value">{{ active_loans|length }}</div></div></div>
+  <div class="stat"><div class="icon i-red">⏰</div>
+    <div><div class="label">Muddati o'tgan</div><div class="value">{{ overdue_count }}</div></div></div>
+  <div class="stat"><div class="icon i-green">📚</div>
+    <div><div class="label">Jami olgan</div><div class="value">{{ total_loans }}</div></div></div>
+</div>
+
+<div class="grid-2">
+  <div class="card">
+    <div class="card-head"><h2>{{ reader.full_name }}</h2>{{ reader|status_badge }}</div>
+    <div class="card-body">
+      <dl class="kv">
+        <dt>Kitobxon kodi</dt><dd><b>{{ reader.reader_code }}</b></dd>
+        <dt>Turi</dt><dd>{{ reader.get_reader_type_display }}</dd>
+        <dt>Telefon</dt><dd>{{ reader.phone|default:"—" }}</dd>
+        <dt>Email</dt><dd>{{ reader.email|default:"—" }}</dd>
+        <dt>Manzil</dt><dd>{{ reader.address|default:"—" }}</dd>
+        <dt>Ro'yxatga olingan</dt><dd>{{ reader.registration_date|date:"d.m.Y" }}</dd>
+        <dt>Kitob olishi mumkinmi</dt>
+        <dd>{% if reader.can_borrow %}<span class="badge badge-green">Ha</span>
+            {% else %}<span class="badge badge-red">Yo'q</span>{% endif %}</dd>
+      </dl>
+      {% if reader.note %}<p class="small muted" style="margin-top:12px">{{ reader.note|linebreaksbr }}</p>{% endif %}
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-head"><h2>Qo'lidagi kitoblar</h2></div>
+    <div class="table-wrap">
+      <table class="data">
+        <thead><tr><th>Kitob</th><th>Muddat</th><th>Holat</th></tr></thead>
+        <tbody>
+        {% for loan in active_loans %}
+          <tr>
+            <td class="small"><a href="{% url 'loans:detail' loan.pk %}">{{ loan.copy.book.title|truncatechars:30 }}</a>
+              <div class="muted">{{ loan.copy.inventory_number }}</div></td>
+            <td class="small nowrap">{{ loan.due_date|date:"d.m.Y" }}</td>
+            <td>{% if loan.is_overdue %}<span class="badge badge-red">{{ loan.overdue_days }} kun</span>
+                {% else %}<span class="badge badge-green">{{ loan.days_left }} kun</span>{% endif %}</td>
+          </tr>
+        {% empty %}
+          <tr><td colspan="3" class="empty">Qo'lida kitob yo'q</td></tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<div class="card" style="margin-top:16px">
+  <div class="card-head"><h2>O'qish tarixi</h2></div>
+  <div class="table-wrap">
+    <table class="data">
+      <thead><tr><th>Kitob</th><th>Inventar</th><th>Berilgan</th><th>Qaytarilgan</th><th>Holat</th></tr></thead>
+      <tbody>
+      {% for loan in history %}
+        <tr>
+          <td class="small">{{ loan.copy.book.title|truncatechars:40 }}</td>
+          <td class="small nowrap">{{ loan.copy.inventory_number }}</td>
+          <td class="small nowrap">{{ loan.issue_date|date:"d.m.Y" }}</td>
+          <td class="small nowrap">{{ loan.return_date|date:"d.m.Y" }}</td>
+          <td>{{ loan|status_badge }}</td>
+        </tr>
+      {% empty %}
+        <tr><td colspan="5" class="empty">Tarix bo'sh</td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

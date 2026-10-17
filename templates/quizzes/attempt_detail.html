@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+{% load library_extras quiz_extras %}
+{% block title %}Javoblar — {{ LIBRARY_NAME }}{% endblock %}
+{% block page_title %}Test javoblari{% endblock %}
+
+{% block content %}
+<div class="toolbar">
+  <a href="{% url 'quizzes:assignment_detail' attempt.assignment_id %}" class="btn btn-light">
+    ‹ Topshiriq</a>
+  <span class="spacer"></span>
+  <span class="strong">{{ attempt.assignment.reader.full_name }}</span>
+  {{ attempt.percent|percent_badge }}
+</div>
+
+<div class="card mb-2">
+  <div class="card-body">
+    <dl class="kv">
+      <dt>Kitob</dt><dd>{{ attempt.assignment.quiz.book.title }}</dd>
+      <dt>Natija</dt>
+      <dd>{{ attempt.correct_count }} / {{ attempt.total_questions }}
+        ({{ attempt.percent }}%, chegara {{ attempt.assignment.pass_percent }}%)</dd>
+      <dt>Xulosa</dt>
+      <dd>{% if attempt.passed %}<span class="badge badge-green">O'qigan</span>
+          {% else %}<span class="badge badge-red">O'qimagan</span>{% endif %}</dd>
+      <dt>Yakunlangan</dt><dd>{{ attempt.finished_at|date:"d.m.Y H:i" }}</dd>
+    </dl>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-head"><h2>Savollar bo'yicha</h2></div>
+  <div class="card-body">
+    {% for answer in answers %}
+      <div style="padding:12px 0;border-bottom:1px solid var(--line)">
+        <div style="display:flex;gap:10px">
+          <span>{% if answer.is_correct %}✅{% else %}❌{% endif %}</span>
+          <div style="flex:1">
+            <div style="font-weight:500;margin-bottom:6px">
+              {{ forloop.counter }}. {{ answer.question.text|linebreaksbr }}
+            </div>
+            <ul style="list-style:none;padding:0;margin:0">
+              {% for choice in answer.question.choices.all %}
+                <li class="small" style="padding:2px 0">
+                  {% if choice.is_correct %}<span class="badge badge-green">to'g'ri</span>
+                  {% elif answer.choice_id == choice.pk %}<span class="badge badge-red">tanlandi</span>
+                  {% else %}<span class="muted">○</span>{% endif %}
+                  {{ choice.text }}
+                </li>
+              {% endfor %}
+            </ul>
+            {% if not answer.choice_id %}
+              <div class="small muted" style="margin-top:4px">Javob berilmagan</div>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+    {% empty %}
+      <p class="small muted mb-0">Javoblar saqlanmagan.</p>
+    {% endfor %}
+  </div>
+</div>
+{% endblock %}

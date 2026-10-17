@@ -1,0 +1,45 @@
+# Render.com uchun loyiha tavsifi (Blueprint).
+# Render'da "New +" -> "Blueprint" -> GitHub repozitoriyangizni tanlasangiz,
+# shu fayl bo'yicha hamma narsa avtomatik sozlanadi.
+#
+# Eslatma: bepul tarifda server 15 daqiqa harakatsizlikdan keyin "uxlaydi",
+# birinchi ochilish ~1 daqiqa davom etadi. $7/oy bilan bu yo'qoladi.
+
+services:
+  - type: web
+    name: smart-library
+    runtime: python
+    plan: free
+    region: frankfurt          # O'zbekistonga eng yaqin mintaqa
+    buildCommand: "chmod +x build.sh && ./build.sh"
+    startCommand: "gunicorn library_project.wsgi:application --workers 2 --timeout 120"
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.12.7"
+      - key: DJANGO_SECRET_KEY
+        generateValue: true     # Render o'zi tasodifiy kalit yaratadi
+      - key: DJANGO_DEBUG
+        value: "0"
+      - key: DJANGO_SSL_REDIRECT
+        value: "1"
+      # Ma'lumotlar bazasi manzilini Render o'zi qo'yadi
+      - key: DATABASE_URL
+        fromDatabase:
+          name: smart-library-db
+          property: connectionString
+      # Quyidagilarni Render panelida qo'lda to'ldirasiz
+      - key: ADMIN_USERNAME
+        sync: false
+      - key: ADMIN_PASSWORD
+        sync: false
+      - key: TELEGRAM_BOT_TOKEN
+        sync: false
+      - key: TELEGRAM_ADMIN_CHAT_ID
+        sync: false
+      - key: ANTHROPIC_API_KEY
+        sync: false
+
+databases:
+  - name: smart-library-db
+    plan: free                  # Diqqat: bepul baza 30 kundan keyin o'chadi
+    region: frankfurt

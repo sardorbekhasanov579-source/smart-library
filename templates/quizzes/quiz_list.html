@@ -1,0 +1,179 @@
+{% extends "base.html" %}
+{% load library_extras %}
+{% block title %}Testlar — {{ LIBRARY_NAME }}{% endblock %}
+{% block page_title %}Testlar{% endblock %}
+
+{% block content %}
+<div class="stat-grid">
+  <div class="stat">
+    <div class="icon i-blue">📝</div>
+    <div><div class="label">Test to'plamlari</div><div class="value">{{ total_count|spaced }}</div></div>
+  </div>
+  <div class="stat">
+    <div class="icon i-amber">📨</div>
+    <div><div class="label">Ochiq topshiriqlar</div><div class="value">{{ stat_open|spaced }}</div></div>
+  </div>
+  <div class="stat">
+    <div class="icon i-green">✅</div>
+    <div><div class="label">O'qilgan (o'tdi)</div><div class="value">{{ stat_passed|spaced }}</div></div>
+  </div>
+  <div class="stat">
+    <div class="icon i-red">❌</div>
+    <div><div class="label">O'qimagan / muddati o'tdi</div><div class="value">{{ stat_failed|spaced }}</div></div>
+  </div>
+</div>
+
+{% if not tg_ready or not ai_ready %}
+  <div class="messages">
+    {% if not tg_ready %}
+      <div class="msg msg-warning">
+        <span>⚠</span>
+        <span>Telegram bot tokeni kiritilmagan — testlar yuborilmaydi.
+          {% if is_admin_role %}<a href="{% url 'core:settings' %}">Sozlamalarda</a>
+          <code>telegram_bot_token</code> ni to'ldiring.{% endif %}</span>
+      </div>
+    {% endif %}
+    {% if not ai_ready %}
+      <div class="msg msg-info">
+        <span>ℹ</span>
+        <span>AI kaliti yo'q — savollar kitob kartasi ma'lumotlari asosida tuziladi.
+          {% if is_admin_role %}<a href="{% url 'core:settings' %}">Sozlamalarda</a>
+          <code>ai_api_key</code> ni to'ldirsangiz mazmunli savollar yaratiladi.{% endif %}</span>
+      </div>
+    {% endif %}
+  </div>
+{% endif %}
+
+<div class="toolbar">
+  <span class="strong">Jami: {{ total_count|spaced }} ta test</span>
+  <span class="spacer"></span>
+  <a href="{% url 'quizzes:assignment_list' %}" class="btn btn-light">📨 Topshiriqlar</a>
+  {% if is_admin_role %}
+    <a href="{% url 'quizzes:telegram_panel' %}" class="btn btn-light">🤖 Telegram</a>
+  {% endif %}
+</div>
+
+<div class="card mb-2">
+  <div class="card-head"><h2>Kitob uchun yangi test tuzish</h2></div>
+  <div class="card-body">
+    <form method="get" class="filters">
+      <div class="field" style="flex:2;min-width:260px">
+        <label>Kitobni qidirish</label>
+        <input type="search" name="book" class="form-input" value="{{ book_query }}"
+               placeholder="Kitob nomi, muallif yoki ISBN">
+      </div>
+      <button class="btn btn-primary" type="submit">🔍 Qidirish</button>
+      {% if book_query %}<a href="{% url 'quizzes:quiz_list' %}" class="btn btn-light">Tozalash</a>{% endif %}
+    </form>
+
+    {% if book_query %}
+      <div class="table-wrap" style="margin-top:12px">
+        <table class="data">
+          <thead><tr><th>Kitob</th><th>Muallif</th><th class="text-center">Testi</th><th></th></tr></thead>
+          <tbody>
+          {% for book in found_books %}
+            <tr>
+              <td><a href="{{ book.get_absolute_url }}">{{ book.title }}</a></td>
+              <td class="small">{{ book.author.full_name }}</td>
+              <td class="text-center small">
+                {% if book.quiz_count %}<span class="badge badge-green">{{ book.quiz_count }}</span>
+                {% else %}<span class="muted">—</span>{% endif %}
+              </td>
+              <td>
+                <form method="post" action="{% url 'quizzes:quiz_generate' %}" class="inline-form">
+                  {% csrf_token %}
+                  <input type="hidden" name="book_id" value="{{ book.pk }}">
+                  {% if book.quiz_count %}<input type="hidden" name="force" value="1">{% endif %}
+                  <button class="btn btn-primary btn-sm" type="submit">
+                    {% if book.quiz_count %}🔄 Qayta tuzish{% else %}🪄 Test tuzish{% endif %}
+                  </button>
+                </form>
+              </td>
+            </tr>
+          {% empty %}
+            <tr><td colspan="4" class="small muted">Mos kitob topilmadi.</td></tr>
+          {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% endif %}
+
+    <p class="small muted mb-0" style="margin-top:10px">
+      Ko'p kitob uchun birdan tuzish:
+      <code>python manage.py generate_quiz --issued</code> yoki
+      <code>python manage.py generate_quiz --all --limit 50</code>
+    </p>
+  </div>
+</div>
+
+<div class="card mb-2">
+  <div class="card-body">
+    <form method="get" class="filters">
+      <div class="field" style="flex:2;min-width:220px">
+        <label>Qidiruv</label>
+        <input type="search" name="q" class="form-input" value="{{ filters.q|default:'' }}"
+               placeholder="Test nomi, kitob yoki muallif">
+      </div>
+      <div class="field"><label>Manba</label>
+        <select name="source" class="form-select"><option value="">Barchasi</option>
+          {% for code, label in sources %}
+            <option value="{{ code }}" {% if filters.source == code %}selected{% endif %}>{{ label }}</option>
+          {% endfor %}
+        </select></div>
+      <div class="field"><label>&nbsp;</label>
+        <label class="small" style="display:flex;align-items:center;gap:6px;font-weight:400;padding:9px 0">
+          <input type="checkbox" name="weak" value="1" {% if filters.weak == '1' %}checked{% endif %}>
+          Savoli kam (&lt;5)
+        </label></div>
+      <button class="btn btn-primary" type="submit">Filtrlash</button>
+      <a href="{% url 'quizzes:quiz_list' %}" class="btn btn-light">Tozalash</a>
+    </form>
+  </div>
+</div>
+
+<div class="card">
+  <div class="table-wrap">
+    <table class="data">
+      <thead><tr>
+        <th>Kitob</th><th>Manba</th><th class="text-center">Savollar</th>
+        <th class="text-center">Chegara</th><th class="text-center">Topshiriq</th>
+        <th>Holat</th><th>Yaratilgan</th><th></th>
+      </tr></thead>
+      <tbody>
+      {% for quiz in quizzes %}
+        <tr>
+          <td>
+            <a href="{{ quiz.get_absolute_url }}"><b>{{ quiz.book.title }}</b></a>
+            <div class="small muted">{{ quiz.book.author.full_name }}</div>
+          </td>
+          <td class="small">{{ quiz.get_source_display }}</td>
+          <td class="text-center">
+            {% if quiz.q_count >= 5 %}
+              <span class="badge badge-green">{{ quiz.q_count }}</span>
+            {% else %}
+              <span class="badge badge-amber">{{ quiz.q_count }}</span>
+            {% endif %}
+          </td>
+          <td class="text-center small">{{ quiz.pass_percent }}%</td>
+          <td class="text-center small">{{ quiz.a_count }}</td>
+          <td>
+            {% if quiz.is_active %}<span class="badge badge-green">Faol</span>
+            {% else %}<span class="badge badge-gray">Nofaol</span>{% endif %}
+          </td>
+          <td class="small nowrap">{{ quiz.created_at|date:"d.m.Y H:i" }}</td>
+          <td><div class="row-actions">
+            <a href="{{ quiz.get_absolute_url }}" class="btn btn-light btn-sm">Ochish</a>
+          </div></td>
+        </tr>
+      {% empty %}
+        <tr><td colspan="8">
+          <div class="empty"><span class="big">📝</span>
+            Hali test tuzilmagan. Yuqoridagi shakl orqali kitob uchun test yarating.</div>
+        </td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% include "_pagination.html" %}
+</div>
+{% endblock %}

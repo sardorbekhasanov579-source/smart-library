@@ -1,0 +1,6 @@
+{% extends "base.html" %}
+{% block page_title %}Ruxsat yo'q{% endblock %}
+{% block content %}
+<div class="card"><div class="empty"><span class="big">🔒</span>Bu sahifaga kirish huquqingiz yo'q.<br>
+<a href="{% url 'core:dashboard' %}">Bosh sahifaga qaytish</a></div></div>
+{% endblock %}

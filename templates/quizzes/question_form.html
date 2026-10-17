@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% block title %}Savolni tahrirlash — {{ LIBRARY_NAME }}{% endblock %}
+{% block page_title %}Savolni tahrirlash{% endblock %}
+
+{% block content %}
+<div class="card" style="max-width:860px">
+  <div class="card-head">
+    <h2>{{ quiz.book.title }}</h2>
+    <a href="{{ quiz.get_absolute_url }}" class="btn btn-light btn-sm">‹ Testga qaytish</a>
+  </div>
+  <div class="card-body">
+    {% if form.non_field_errors %}
+      <div class="messages">
+        {% for error in form.non_field_errors %}
+          <div class="msg msg-error"><span>✕</span><span>{{ error }}</span></div>
+        {% endfor %}
+      </div>
+    {% endif %}
+    <form method="post">
+      {% csrf_token %}
+      <div class="form-grid">
+        {% for field in form %}{% include "_form_field.html" %}{% endfor %}
+      </div>
+      <div class="form-actions">
+        <button class="btn btn-primary" type="submit">💾 Saqlash</button>
+        <a href="{{ quiz.get_absolute_url }}" class="btn btn-light">Bekor qilish</a>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}

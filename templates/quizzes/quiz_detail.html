@@ -1,0 +1,156 @@
+{% extends "base.html" %}
+{% load library_extras quiz_extras %}
+{% block title %}{{ quiz.title }} — {{ LIBRARY_NAME }}{% endblock %}
+{% block page_title %}Test: {{ quiz.book.title }}{% endblock %}
+
+{% block content %}
+<div class="toolbar">
+  <a href="{% url 'quizzes:quiz_list' %}" class="btn btn-light">‹ Testlar</a>
+  <span class="spacer"></span>
+  <form method="post" action="{% url 'quizzes:quiz_generate' %}" class="inline-form">
+    {% csrf_token %}
+    <input type="hidden" name="book_id" value="{{ quiz.book_id }}">
+    <input type="hidden" name="force" value="1">
+    <button class="btn btn-light" type="submit"
+            onclick="return confirm('Yangi savollar to\'plami tuzilsin? Eski test nofaol qolmaydi, yangisi qo\'shiladi.')">
+      🔄 Qayta tuzish
+    </button>
+  </form>
+  {% if is_admin_role %}
+    <form method="post" action="{% url 'quizzes:quiz_delete' quiz.pk %}" class="inline-form">
+      {% csrf_token %}
+      <button class="btn btn-danger" type="submit"
+              onclick="return confirm('Testni o\'chirishni tasdiqlaysizmi?')">🗑 O'chirish</button>
+    </form>
+  {% endif %}
+</div>
+
+<div class="grid-2">
+  <div>
+    <div class="card mb-2">
+      <div class="card-head">
+        <h2>Savollar ({{ quiz.questions_count }} ta)</h2>
+        {% if quiz.questions_count < 5 %}
+          <span class="badge badge-amber">Savol kam — test yuborilmaydi</span>
+        {% else %}
+          <span class="badge badge-green">Yuborishga tayyor</span>
+        {% endif %}
+      </div>
+      <div class="card-body">
+        {% for question in questions %}
+          <div style="padding:12px 0;border-bottom:1px solid var(--line)">
+            <div style="display:flex;gap:10px;align-items:flex-start">
+              <b class="muted small" style="min-width:26px">{{ forloop.counter }}.</b>
+              <div style="flex:1">
+                <div style="font-weight:500;margin-bottom:6px">{{ question.text|linebreaksbr }}</div>
+                <ul style="list-style:none;padding:0;margin:0 0 6px">
+                  {% for choice in question.choices.all %}
+                    <li class="small" style="padding:2px 0">
+                      {% if choice.is_correct %}
+                        <span class="badge badge-green">✔</span>
+                      {% else %}
+                        <span class="muted">○</span>
+                      {% endif %}
+                      {{ choice.text }}
+                    </li>
+                  {% endfor %}
+                </ul>
+                {% if question.explanation %}
+                  <div class="small muted">💡 {{ question.explanation }}</div>
+                {% endif %}
+              </div>
+              <div class="row-actions">
+                <a href="{% url 'quizzes:question_edit' question.pk %}"
+                   class="btn btn-light btn-sm">✎</a>
+                <form method="post" action="{% url 'quizzes:question_delete' question.pk %}"
+                      class="inline-form">
+                  {% csrf_token %}
+                  <button class="btn btn-light btn-sm" type="submit"
+                          onclick="return confirm('Savol o\'chirilsinmi?')">🗑</button>
+                </form>
+              </div>
+            </div>
+          </div>
+        {% empty %}
+          <div class="empty"><span class="big">❓</span>Savollar yo'q. Pastdagi shakl orqali qo'shing.</div>
+        {% endfor %}
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-head"><h2>Qo'lda savol qo'shish</h2></div>
+      <div class="card-body">
+        {% if question_form.non_field_errors %}
+          <div class="messages">
+            {% for error in question_form.non_field_errors %}
+              <div class="msg msg-error"><span>✕</span><span>{{ error }}</span></div>
+            {% endfor %}
+          </div>
+        {% endif %}
+        <form method="post">
+          {% csrf_token %}
+          <input type="hidden" name="action" value="add_question">
+          <div class="form-grid">
+            {% for field in question_form %}{% include "_form_field.html" %}{% endfor %}
+          </div>
+          <div class="form-actions">
+            <button class="btn btn-primary" type="submit">➕ Savolni qo'shish</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <div>
+    <div class="card mb-2">
+      <div class="card-head"><h2>Ma'lumot</h2></div>
+      <div class="card-body">
+        <dl class="kv">
+          <dt>Kitob</dt><dd><a href="{{ quiz.book.get_absolute_url }}">{{ quiz.book.title }}</a></dd>
+          <dt>Muallif</dt><dd>{{ quiz.book.author.full_name }}</dd>
+          <dt>Toifa</dt><dd>{{ quiz.book.category }}</dd>
+          <dt>Manba</dt><dd>{{ quiz.get_source_display }}</dd>
+          <dt>Savollar</dt><dd>{{ quiz.questions_count }} ta</dd>
+          <dt>Maqsad</dt><dd>{{ quiz.question_target }} ta</dd>
+          <dt>Chegara</dt><dd>{{ quiz.pass_percent }}%</dd>
+          <dt>Holat</dt><dd>{% if quiz.is_active %}Faol{% else %}Nofaol{% endif %}</dd>
+          <dt>Yaratilgan</dt><dd>{{ quiz.created_at|date:"d.m.Y H:i" }}</dd>
+          {% if quiz.created_by %}<dt>Kim</dt><dd>{{ quiz.created_by.full_name }}</dd>{% endif %}
+        </dl>
+        {% if quiz.note %}<p class="small muted" style="margin-top:10px">ℹ️ {{ quiz.note }}</p>{% endif %}
+      </div>
+    </div>
+
+    <div class="card mb-2">
+      <div class="card-head"><h2>Sozlamalar</h2></div>
+      <div class="card-body">
+        <form method="post">
+          {% csrf_token %}
+          <input type="hidden" name="action" value="save_settings">
+          <div class="form-grid">
+            {% for field in settings_form %}{% include "_form_field.html" %}{% endfor %}
+          </div>
+          <div class="form-actions">
+            <button class="btn btn-primary btn-sm" type="submit">💾 Saqlash</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-head"><h2>So'nggi topshiriqlar</h2></div>
+      <div class="card-body">
+        {% for item in assignments %}
+          <div class="small" style="padding:7px 0;border-bottom:1px solid var(--line)">
+            <a href="{% url 'quizzes:assignment_detail' item.pk %}">{{ item.reader.full_name }}</a>
+            — {{ item|assignment_badge }}
+            {% if item.best_percent %}<b>{{ item.best_percent }}%</b>{% endif %}
+          </div>
+        {% empty %}
+          <p class="small muted mb-0">Hali topshiriq yo'q.</p>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

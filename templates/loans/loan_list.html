@@ -1,0 +1,69 @@
+{% extends "base.html" %}
+{% load library_extras %}
+{% block title %}Operatsiyalar — {{ LIBRARY_NAME }}{% endblock %}
+{% block page_title %}Berish / qaytarish operatsiyalari{% endblock %}
+
+{% block content %}
+<div class="stat-grid">
+  <div class="stat"><div class="icon i-blue">📖</div>
+    <div><div class="label">Hozir berilgan</div><div class="value">{{ count_active|spaced }}</div></div></div>
+  <div class="stat"><div class="icon i-red">⏰</div>
+    <div><div class="label">Muddati o'tgan</div><div class="value">{{ count_overdue|spaced }}</div></div></div>
+  <div class="stat"><div class="icon i-green">📆</div>
+    <div><div class="label">Bugun berilgan</div><div class="value">{{ count_today|spaced }}</div></div></div>
+</div>
+
+<div class="card mb-2">
+  <div class="card-body">
+    <form method="get" class="filters">
+      <div class="field" style="flex:2;min-width:220px">
+        <label>Qidiruv</label>
+        <input type="search" name="q" class="form-input" value="{{ filters.q|default:'' }}"
+               placeholder="Kitobxon, kitob yoki inventar raqami">
+      </div>
+      <div class="field">
+        <label>Holat</label>
+        <select name="status" class="form-select">
+          <option value="">Barchasi</option>
+          {% for code, label in statuses %}
+            <option value="{{ code }}" {% if filters.status == code %}selected{% endif %}>{{ label }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="field"><label>Dan</label>
+        <input type="date" name="from" class="form-input" value="{{ filters.from|default:'' }}"></div>
+      <div class="field"><label>Gacha</label>
+        <input type="date" name="to" class="form-input" value="{{ filters.to|default:'' }}"></div>
+      <button class="btn btn-primary" type="submit">Filtrlash</button>
+      <a href="{% url 'loans:list' %}" class="btn btn-light">Tozalash</a>
+    </form>
+  </div>
+</div>
+
+<div class="card">
+  <div class="table-wrap">
+    <table class="data">
+      <thead><tr><th class="num">№</th><th>Kitobxon</th><th>Kitob</th><th>Inventar</th>
+        <th>Berilgan</th><th>Muddat</th><th>Qaytarilgan</th><th>Holat</th><th>Xodim</th></tr></thead>
+      <tbody>
+      {% for loan in loans %}
+        <tr>
+          <td class="num"><a href="{% url 'loans:detail' loan.pk %}">#{{ loan.pk }}</a></td>
+          <td class="small"><a href="{% url 'readers:detail' loan.reader.pk %}">{{ loan.reader.full_name }}</a></td>
+          <td class="small">{{ loan.copy.book.title|truncatechars:30 }}</td>
+          <td class="small nowrap">{{ loan.copy.inventory_number }}</td>
+          <td class="small nowrap">{{ loan.issue_date|date:"d.m.Y" }}</td>
+          <td class="small nowrap">{{ loan.due_date|date:"d.m.Y" }}</td>
+          <td class="small nowrap">{{ loan.return_date|date:"d.m.Y"|default:"—" }}</td>
+          <td>{{ loan|status_badge }}</td>
+          <td class="small muted">{{ loan.issued_by.full_name|default:"—" }}</td>
+        </tr>
+      {% empty %}
+        <tr><td colspan="9" class="empty"><span class="big">🔁</span>Operatsiya topilmadi</td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% include "_pagination.html" %}
+</div>
+{% endblock %}

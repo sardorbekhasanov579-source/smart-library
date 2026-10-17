@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+{% load library_extras %}
+{% block title %}Kitob qaytarish — {{ LIBRARY_NAME }}{% endblock %}
+{% block page_title %}Kitob qaytarish{% endblock %}
+
+{% block content %}
+<div class="card mb-2">
+  <div class="card-body">
+    <form method="get" class="filters">
+      <div class="field" style="flex:1;min-width:260px">
+        <label>Inventar raqami, QR kod, kitobxon kodi yoki ismi</label>
+        <input type="search" name="q" class="form-input" value="{{ query }}" autofocus
+               placeholder="INV-0001-001 / KX-000012 / Abdullayev">
+      </div>
+      <button class="btn btn-primary" type="submit">🔍 Topish</button>
+      <a href="{% url 'loans:return' %}" class="btn btn-light">Tozalash</a>
+      <span class="spacer"></span>
+      <span class="small muted">Bugun qaytarilgan: <b>{{ today_returned }}</b> ta</span>
+    </form>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-head">
+    <h2>Qaytarilmagan kitoblar{% if query %} — qidiruv natijasi{% endif %}</h2>
+    <span class="small muted">{{ loans|length }} ta</span>
+  </div>
+  <div class="table-wrap">
+    <table class="data">
+      <thead>
+        <tr><th>Kitobxon</th><th>Kitob</th><th>Inventar</th><th>Berilgan</th>
+            <th>Muddat</th><th>Holat</th><th>Qaytarib olish</th></tr>
+      </thead>
+      <tbody>
+      {% for loan in loans %}
+        <tr>
+          <td>
+            <a href="{% url 'readers:detail' loan.reader.pk %}"><b>{{ loan.reader.full_name }}</b></a>
+            <div class="small muted">{{ loan.reader.reader_code }}</div>
+          </td>
+          <td>{{ loan.copy.book.title|truncatechars:34 }}
+            <div class="small muted">{{ loan.copy.book.author.full_name }}</div>
+          </td>
+          <td class="small nowrap">{{ loan.copy.inventory_number }}</td>
+          <td class="small nowrap">{{ loan.issue_date|date:"d.m.Y" }}</td>
+          <td class="small nowrap">{{ loan.due_date|date:"d.m.Y" }}</td>
+          <td>
+            {% if loan.is_overdue %}
+              <span class="badge badge-red">{{ loan.overdue_days }} kun kechikdi</span>
+            {% else %}
+              <span class="badge badge-green">{{ loan.days_left }} kun qoldi</span>
+            {% endif %}
+          </td>
+          <td>
+            <form method="post" style="display:flex;gap:6px;align-items:center">
+              {% csrf_token %}
+              <input type="hidden" name="loan_id" value="{{ loan.pk }}">
+              <select name="condition" class="form-select" style="width:auto;padding:5px 9px;font-size:12.5px">
+                <option value="available">Yaxshi holatda</option>
+                <option value="damaged">Shikastlangan</option>
+                <option value="lost">Yo'qolgan</option>
+              </select>
+              <button class="btn btn-green btn-sm" type="submit">⬇️ Qaytarish</button>
+            </form>
+          </td>
+        </tr>
+      {% empty %}
+        <tr><td colspan="7" class="empty"><span class="big">✅</span>
+          {% if query %}Qidiruv bo'yicha qaytarilmagan kitob topilmadi{% else %}Barcha kitoblar qaytarilgan{% endif %}
+        </td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

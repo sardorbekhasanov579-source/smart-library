@@ -1,0 +1,114 @@
+{% extends "base.html" %}
+{% load library_extras %}
+{% block title %}Kitoblar — {{ LIBRARY_NAME }}{% endblock %}
+{% block page_title %}Kitoblar{% endblock %}
+
+{% block content %}
+<div class="toolbar">
+  <span class="strong">Jami: {{ total_count|spaced }} ta nom</span>
+  <span class="spacer"></span>
+  {% if can_manage %}
+    <a href="{% url 'books:create' %}" class="btn btn-primary">➕ Yangi kitob</a>
+    <a href="{% url 'catalog:home' %}" class="btn btn-light">🗂️ Katalog</a>
+  {% endif %}
+</div>
+
+<div class="card mb-2">
+  <div class="card-body">
+    <form method="get" class="filters">
+      <div class="field" style="flex:2;min-width:220px">
+        <label>Qidiruv</label>
+        <input type="search" name="q" class="form-input" value="{{ filters.q|default:'' }}"
+               placeholder="Nomi, muallif, ISBN, nashriyot">
+      </div>
+      <div class="field">
+        <label>Toifa</label>
+        <select name="category" class="form-select">
+          <option value="">Barchasi</option>
+          {% for c in categories %}
+            <option value="{{ c.pk }}" {% if filters.category == c.pk|stringformat:"s" %}selected{% endif %}>{{ c }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="field">
+        <label>Muallif</label>
+        <select name="author" class="form-select">
+          <option value="">Barchasi</option>
+          {% for a in authors %}
+            <option value="{{ a.pk }}" {% if filters.author == a.pk|stringformat:"s" %}selected{% endif %}>{{ a.full_name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="field">
+        <label>Mavjudligi</label>
+        <select name="availability" class="form-select">
+          <option value="">Barchasi</option>
+          <option value="available" {% if filters.availability == 'available' %}selected{% endif %}>Mavjud</option>
+          <option value="out" {% if filters.availability == 'out' %}selected{% endif %}>Tugagan</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Tartib</label>
+        <select name="order" class="form-select">
+          <option value="title" {% if filters.order == 'title' %}selected{% endif %}>Nomi (A-Z)</option>
+          <option value="-title" {% if filters.order == '-title' %}selected{% endif %}>Nomi (Z-A)</option>
+          <option value="-created_at" {% if filters.order == '-created_at' %}selected{% endif %}>Yangi qo'shilgan</option>
+          <option value="-available_quantity" {% if filters.order == '-available_quantity' %}selected{% endif %}>Ko'p mavjud</option>
+        </select>
+      </div>
+      <button class="btn btn-primary" type="submit">Filtrlash</button>
+      <a href="{% url 'books:list' %}" class="btn btn-light">Tozalash</a>
+    </form>
+  </div>
+</div>
+
+<div class="card">
+  <div class="table-wrap">
+    <table class="data">
+      <thead>
+        <tr>
+          <th class="num">№</th><th>Kitob</th><th>Toifa</th><th>ISBN</th>
+          <th>Nashr</th><th>Jami</th><th>Mavjud</th><th>Javon</th>
+          {% if can_manage %}<th></th>{% endif %}
+        </tr>
+      </thead>
+      <tbody>
+      {% for book in books %}
+        <tr>
+          <td class="num">{{ forloop.counter0|add:page_obj.start_index|default:forloop.counter }}</td>
+          <td>
+            <a href="{{ book.get_absolute_url }}"><b>{{ book.title }}</b></a>
+            <div class="small muted">{{ book.author.full_name }}</div>
+          </td>
+          <td class="small">{{ book.category.name }}</td>
+          <td class="small nowrap">{{ book.isbn|default:"—" }}</td>
+          <td class="small text-center">{{ book.publication_year|default:"—" }}</td>
+          <td class="text-center">{{ book.total_quantity }}</td>
+          <td class="text-center">
+            {% if book.available_quantity %}
+              <span class="badge badge-green">{{ book.available_quantity }}</span>
+            {% else %}
+              <span class="badge badge-red">0</span>
+            {% endif %}
+          </td>
+          <td class="small">{{ book.shelf_location|default:"—" }}</td>
+          {% if can_manage %}
+          <td>
+            <div class="row-actions">
+              <a href="{% url 'books:update' book.pk %}" class="btn btn-light btn-sm">✎</a>
+              {% if book.available_quantity %}
+                <a href="{% url 'loans:issue' %}?book={{ book.pk }}" class="btn btn-primary btn-sm">Berish</a>
+              {% endif %}
+            </div>
+          </td>
+          {% endif %}
+        </tr>
+      {% empty %}
+        <tr><td colspan="9" class="empty"><span class="big">📚</span>Kitob topilmadi</td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% include "_pagination.html" %}
+</div>
+{% endblock %}

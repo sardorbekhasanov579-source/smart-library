@@ -1,0 +1,95 @@
+{% extends "base.html" %}
+{% load library_extras quiz_extras %}
+{% block title %}Test topshiriqlari — {{ LIBRARY_NAME }}{% endblock %}
+{% block page_title %}Test topshiriqlari{% endblock %}
+
+{% block content %}
+<div class="toolbar">
+  <a href="{% url 'quizzes:quiz_list' %}" class="btn btn-light">‹ Testlar</a>
+  <span class="strong">Jami: {{ total_count|spaced }} ta</span>
+  <span class="spacer"></span>
+  <a href="?open=1" class="btn btn-light">⏳ Faqat ochiqlar</a>
+</div>
+
+<div class="card mb-2">
+  <div class="card-head"><h2>Testni qo'lda biriktirish</h2></div>
+  <div class="card-body">
+    <form method="post" action="{% url 'quizzes:assignment_create' %}">
+      {% csrf_token %}
+      <div class="form-grid">
+        {% for field in create_form %}{% include "_form_field.html" %}{% endfor %}
+      </div>
+      <div class="form-actions">
+        <button class="btn btn-primary" type="submit">📨 Biriktirish</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div class="card mb-2">
+  <div class="card-body">
+    <form method="get" class="filters">
+      <div class="field" style="flex:2;min-width:220px">
+        <label>Qidiruv</label>
+        <input type="search" name="q" class="form-input" value="{{ filters.q|default:'' }}"
+               placeholder="Kitobxon, kod yoki kitob nomi">
+      </div>
+      <div class="field"><label>Holat</label>
+        <select name="status" class="form-select"><option value="">Barchasi</option>
+          {% for code, label in statuses %}
+            <option value="{{ code }}" {% if filters.status == code %}selected{% endif %}>{{ label }}</option>
+          {% endfor %}
+        </select></div>
+      <button class="btn btn-primary" type="submit">Filtrlash</button>
+      <a href="{% url 'quizzes:assignment_list' %}" class="btn btn-light">Tozalash</a>
+    </form>
+  </div>
+</div>
+
+<div class="card">
+  <div class="table-wrap">
+    <table class="data">
+      <thead><tr>
+        <th>Kitobxon</th><th>Kitob</th><th>Holat</th><th class="text-center">Natija</th>
+        <th class="text-center">Chegara</th><th>Muddat</th><th>Yuborilgan</th><th></th>
+      </tr></thead>
+      <tbody>
+      {% for item in assignments %}
+        <tr>
+          <td>
+            <a href="{{ item.reader.get_absolute_url }}">{{ item.reader.full_name }}</a>
+            <div class="small muted">{{ item.reader.reader_code }}</div>
+          </td>
+          <td>
+            <a href="{% url 'quizzes:quiz_detail' item.quiz_id %}">{{ item.quiz.book.title }}</a>
+            <div class="small muted">{{ item.quiz.book.author.full_name }}</div>
+          </td>
+          <td>{{ item|assignment_badge }}</td>
+          <td class="text-center">
+            {% if item.best_percent %}{{ item.best_percent|percent_badge }}
+            {% else %}<span class="muted">—</span>{% endif %}
+          </td>
+          <td class="text-center small">{{ item.pass_percent }}%</td>
+          <td class="small nowrap">
+            {% if item.deadline %}{{ item.deadline|date:"d.m.Y H:i" }}{% else %}—{% endif %}
+          </td>
+          <td class="small nowrap">
+            {% if item.sent_at %}{{ item.sent_at|date:"d.m.Y H:i" }}
+            {% else %}<span class="badge badge-gray">Yuborilmagan</span>{% endif %}
+          </td>
+          <td><div class="row-actions">
+            <a href="{% url 'quizzes:assignment_detail' item.pk %}" class="btn btn-light btn-sm">Ochish</a>
+          </div></td>
+        </tr>
+      {% empty %}
+        <tr><td colspan="8">
+          <div class="empty"><span class="big">📨</span>
+            Hali topshiriq yo'q. Rejalashtiruvchi ishga tushganda avtomatik paydo bo'ladi.</div>
+        </td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% include "_pagination.html" %}
+</div>
+{% endblock %}

@@ -1,0 +1,90 @@
+{% extends "base.html" %}
+{% block title %}Qidiruv — {{ LIBRARY_NAME }}{% endblock %}
+{% block page_title %}Qidiruv{% endblock %}
+
+{% block content %}
+<div class="card mb-2">
+  <div class="card-body">
+    <form method="get" style="display:flex;gap:9px">
+      <input type="search" name="q" class="form-input" value="{{ query }}" autofocus
+             placeholder="Kitob nomi, muallif, ISBN, inventar raqami, kitobxon...">
+      <button class="btn btn-primary" type="submit">🔍 Qidirish</button>
+    </form>
+  </div>
+</div>
+
+{% if query %}
+  <p class="muted small">«{{ query }}» bo'yicha {{ total_found }} ta natija</p>
+
+  {% if books %}
+  <div class="card mb-2">
+    <div class="card-head"><h2>📖 Kitoblar ({{ books|length }})</h2></div>
+    <div class="table-wrap"><table class="data">
+      <thead><tr><th>Kitob</th><th>Muallif</th><th>Toifa</th><th>ISBN</th><th>Mavjud</th></tr></thead>
+      <tbody>{% for book in books %}
+        <tr><td><a href="{{ book.get_absolute_url }}"><b>{{ book.title }}</b></a></td>
+          <td class="small">{{ book.author.full_name }}</td>
+          <td class="small">{{ book.category.name }}</td>
+          <td class="small">{{ book.isbn|default:"—" }}</td>
+          <td class="text-center">{% if book.available_quantity %}
+            <span class="badge badge-green">{{ book.available_quantity }}</span>
+            {% else %}<span class="badge badge-red">0</span>{% endif %}</td></tr>
+      {% endfor %}</tbody>
+    </table></div>
+  </div>
+  {% endif %}
+
+  {% if copies %}
+  <div class="card mb-2">
+    <div class="card-head"><h2>🔖 Nusxalar ({{ copies|length }})</h2></div>
+    <div class="table-wrap"><table class="data">
+      <thead><tr><th>Inventar</th><th>Kitob</th><th>Holat</th></tr></thead>
+      <tbody>{% for copy in copies %}
+        <tr><td><b>{{ copy.inventory_number }}</b></td>
+          <td><a href="{{ copy.book.get_absolute_url }}">{{ copy.book.title }}</a></td>
+          <td>{% load library_extras %}{{ copy|status_badge }}</td></tr>
+      {% endfor %}</tbody>
+    </table></div>
+  </div>
+  {% endif %}
+
+  {% if readers %}
+  <div class="card mb-2">
+    <div class="card-head"><h2>👥 Kitobxonlar ({{ readers|length }})</h2></div>
+    <div class="table-wrap"><table class="data">
+      <thead><tr><th>Kodi</th><th>F.I.Sh.</th><th>Telefon</th><th>Qo'lida</th></tr></thead>
+      <tbody>{% for reader in readers %}
+        <tr><td class="small"><b>{{ reader.reader_code }}</b></td>
+          <td><a href="{{ reader.get_absolute_url }}">{{ reader.full_name }}</a></td>
+          <td class="small">{{ reader.phone|default:"—" }}</td>
+          <td class="text-center">{{ reader.active_loans_count }}</td></tr>
+      {% endfor %}</tbody>
+    </table></div>
+  </div>
+  {% endif %}
+
+  {% if authors or categories %}
+  <div class="grid-2">
+    {% if authors %}
+    <div class="card"><div class="card-head"><h2>✍️ Mualliflar</h2></div>
+      <div class="card-body">{% for a in authors %}
+        <div style="padding:6px 0"><a href="{% url 'catalog:author_detail' a.pk %}">{{ a.full_name }}</a></div>
+      {% endfor %}</div></div>
+    {% endif %}
+    {% if categories %}
+    <div class="card"><div class="card-head"><h2>🗂️ Toifalar</h2></div>
+      <div class="card-body">{% for c in categories %}
+        <div style="padding:6px 0"><a href="{% url 'catalog:category_detail' c.pk %}">{{ c }}</a></div>
+      {% endfor %}</div></div>
+    {% endif %}
+  </div>
+  {% endif %}
+
+  {% if not total_found %}
+    <div class="card"><div class="empty"><span class="big">🔍</span>Hech narsa topilmadi</div></div>
+  {% endif %}
+{% else %}
+  <div class="card"><div class="empty"><span class="big">🔍</span>
+    Qidirish uchun yuqoridagi maydonga so'z kiriting</div></div>
+{% endif %}
+{% endblock %}

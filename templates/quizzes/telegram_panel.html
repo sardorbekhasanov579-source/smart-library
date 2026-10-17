@@ -1,0 +1,153 @@
+{% extends "base.html" %}
+{% load library_extras %}
+{% block title %}Telegram va AI — {{ LIBRARY_NAME }}{% endblock %}
+{% block page_title %}Telegram va AI sozlamalari{% endblock %}
+
+{% block content %}
+<div class="toolbar">
+  <a href="{% url 'quizzes:quiz_list' %}" class="btn btn-light">‹ Testlar</a>
+  <span class="spacer"></span>
+  <a href="{% url 'core:settings' %}" class="btn btn-primary">⚙️ Sozlamalarni tahrirlash</a>
+</div>
+
+<div class="grid-2">
+  <div>
+    <div class="card mb-2">
+      <div class="card-head">
+        <h2>Telegram bot</h2>
+        {% if tg_configured %}
+          {% if bot_error %}<span class="badge badge-red">Xato</span>
+          {% else %}<span class="badge badge-green">Ulangan</span>{% endif %}
+        {% else %}<span class="badge badge-gray">Token yo'q</span>{% endif %}
+      </div>
+      <div class="card-body">
+        {% if not tg_configured %}
+          <div class="msg msg-warning"><span>⚠</span><span>
+            Sozlamalarda <code>telegram_bot_token</code> maydoni bo'sh.
+            BotFather'dan olingan tokenni kiriting.</span></div>
+        {% elif bot_error %}
+          <div class="msg msg-error"><span>✕</span><span>{{ bot_error }}</span></div>
+        {% else %}
+          <dl class="kv">
+            <dt>Bot nomi</dt><dd>{{ bot_name }}</dd>
+            <dt>Username</dt>
+            <dd><a href="https://t.me/{{ bot_username }}" target="_blank">@{{ bot_username }}</a></dd>
+            <dt>Admin chatlar</dt>
+            <dd>{% if admin_chats %}{{ admin_chats|join:", " }}
+                {% else %}<span class="badge badge-amber">Kiritilmagan</span>{% endif %}</dd>
+            <dt>Sayt manzili</dt><dd>{{ base_url }}</dd>
+          </dl>
+        {% endif %}
+
+        <h3 style="font-size:13.5px;margin:16px 0 8px">Botni ishga tushirish</h3>
+        <p class="small muted mb-0">
+          Terminalda (loyiha papkasida) quyidagini ishga tushiring va ochiq qoldiring:
+        </p>
+        <pre style="background:#f4f7fb;border:1px solid var(--line);border-radius:8px;
+                    padding:10px;font-size:12px;overflow:auto">python manage.py run_telegram_bot</pre>
+        <p class="small muted">
+          Admin chat ID ni olish uchun botga <code>/id</code> deb yozing, chiqqan raqamni
+          Sozlamalardagi <code>telegram_admin_chat_id</code> ga kiriting.
+        </p>
+      </div>
+    </div>
+
+    <div class="card mb-2">
+      <div class="card-head"><h2>Sinov xabari</h2></div>
+      <div class="card-body">
+        <form method="post">
+          {% csrf_token %}
+          <div class="form-grid">
+            {% for field in form %}{% include "_form_field.html" %}{% endfor %}
+          </div>
+          <div class="form-actions">
+            <button class="btn btn-primary" type="submit"
+                    {% if not tg_configured %}disabled{% endif %}>📤 Yuborish</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-head">
+        <h2>Ulangan kitobxonlar</h2>
+        <span class="badge badge-blue">{{ accounts_total }} / {{ readers_total }}</span>
+      </div>
+      <div class="table-wrap">
+        <table class="data">
+          <thead><tr><th>Kitobxon</th><th>Telegram</th><th>Telefon</th><th>Ulangan</th></tr></thead>
+          <tbody>
+          {% for account in accounts %}
+            <tr>
+              <td><a href="{{ account.reader.get_absolute_url }}">{{ account.reader.full_name }}</a></td>
+              <td class="small">
+                {% if account.username %}@{{ account.username }}{% else %}{{ account.chat_id }}{% endif %}
+              </td>
+              <td class="small nowrap">{{ account.phone|default:"—" }}</td>
+              <td class="small nowrap">{{ account.created_at|date:"d.m.Y" }}</td>
+            </tr>
+          {% empty %}
+            <tr><td colspan="4">
+              <div class="empty"><span class="big">🤖</span>
+                Hali hech kim botga ulanmagan. Kitobxonlar botga <code>/start</code> yuborib,
+                telefon raqamini tasdiqlashi kerak.</div>
+            </td></tr>
+          {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <div>
+    <div class="card mb-2">
+      <div class="card-head">
+        <h2>AI savol generatori</h2>
+        {% if ai_configured %}<span class="badge badge-green">Ulangan</span>
+        {% else %}<span class="badge badge-gray">Kalit yo'q</span>{% endif %}
+      </div>
+      <div class="card-body">
+        <dl class="kv">
+          <dt>Provayder</dt><dd>{{ ai_provider }}</dd>
+          <dt>Model</dt><dd>{{ ai_model }}</dd>
+        </dl>
+        {% if not ai_configured %}
+          <div class="msg msg-info" style="margin-top:10px"><span>ℹ</span><span>
+            Sozlamalarda <code>ai_api_key</code> ni to'ldiring. Kalit bo'lmasa savollar
+            kitob kartasi ma'lumotlari asosida tuziladi — bu kitob mazmunini tekshirmaydi.
+          </span></div>
+        {% endif %}
+      </div>
+    </div>
+
+    <div class="card mb-2">
+      <div class="card-head"><h2>Test qoidalari</h2></div>
+      <div class="card-body">
+        <dl class="kv">
+          <dt>Savollar soni</dt><dd>{{ question_count }} ta</dd>
+          <dt>O'tish chegarasi</dt><dd>{{ pass_percent }}%</dd>
+          <dt>Oldindan yuborish</dt><dd>muddatdan {{ days_before }} kun oldin</dd>
+        </dl>
+        <p class="small muted" style="margin-top:10px">
+          Bu qiymatlar Sozlamalar bo'limidan o'zgartiriladi:
+          <code>quiz_question_count</code>, <code>quiz_pass_percent</code>,
+          <code>quiz_days_before_due</code>.
+        </p>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-head"><h2>Kunlik rejalashtiruvchi</h2></div>
+      <div class="card-body">
+        <p class="small muted">Kuniga bir marta ishga tushishi kerak:</p>
+        <pre style="background:#f4f7fb;border:1px solid var(--line);border-radius:8px;
+                    padding:10px;font-size:12px;overflow:auto">python manage.py send_due_quizzes</pre>
+        <p class="small muted mb-0">
+          Windows'da — Task Scheduler, Linux'da — cron.
+          Sinab ko'rish uchun: <code>--dry-run</code>.
+        </p>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

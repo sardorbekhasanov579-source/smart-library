@@ -1,0 +1,212 @@
+{% extends "base.html" %}
+{% load library_extras %}
+
+{% block title %}Bosh sahifa — {{ LIBRARY_NAME }}{% endblock %}
+{% block page_title %}Bosh sahifa{% endblock %}
+
+{% block content %}
+
+{% if user.is_reader %}
+  {# ---------- Kitobxon kabineti ---------- #}
+  {% if reader %}
+    <div class="stat-grid">
+      <div class="stat">
+        <div class="icon i-blue">📖</div>
+        <div><div class="label">Qo'limdagi kitoblar</div><div class="value">{{ my_loans|length }}</div></div>
+      </div>
+      <div class="stat">
+        <div class="icon i-red">⏰</div>
+        <div><div class="label">Muddati o'tgan</div><div class="value">{{ reader.overdue_loans_count }}</div></div>
+      </div>
+      <div class="stat">
+        <div class="icon i-navy">🎫</div>
+        <div><div class="label">Kitobxon kodim</div><div class="value" style="font-size:17px">{{ reader.reader_code }}</div></div>
+      </div>
+    </div>
+
+    <div class="card mb-2">
+      <div class="card-head"><h2>Qo'limdagi kitoblar</h2></div>
+      <div class="table-wrap">
+        <table class="data">
+          <thead><tr><th>Kitob</th><th>Inventar</th><th>Berilgan</th><th>Qaytarish muddati</th><th>Holat</th></tr></thead>
+          <tbody>
+          {% for loan in my_loans %}
+            <tr>
+              <td><b>{{ loan.copy.book.title }}</b><div class="small muted">{{ loan.copy.book.author.full_name }}</div></td>
+              <td class="nowrap">{{ loan.copy.inventory_number }}</td>
+              <td class="nowrap">{{ loan.issue_date|date:"d.m.Y" }}</td>
+              <td class="nowrap">{{ loan.due_date|date:"d.m.Y" }}</td>
+              <td>
+                {% if loan.is_overdue %}<span class="badge badge-red">{{ loan.overdue_days }} kun kechikdi</span>
+                {% else %}<span class="badge badge-green">{{ loan.days_left }} kun qoldi</span>{% endif %}
+              </td>
+            </tr>
+          {% empty %}
+            <tr><td colspan="5" class="empty"><span class="big">📚</span>Hozircha kitob olmagansiz</td></tr>
+          {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-head"><h2>O'qish tarixim</h2></div>
+      <div class="table-wrap">
+        <table class="data">
+          <thead><tr><th>Kitob</th><th>Berilgan</th><th>Qaytarilgan</th></tr></thead>
+          <tbody>
+          {% for loan in my_history %}
+            <tr>
+              <td>{{ loan.copy.book.title }}</td>
+              <td class="nowrap">{{ loan.issue_date|date:"d.m.Y" }}</td>
+              <td class="nowrap">{{ loan.return_date|date:"d.m.Y" }}</td>
+            </tr>
+          {% empty %}
+            <tr><td colspan="3" class="empty">Tarix bo'sh</td></tr>
+          {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  {% else %}
+    <div class="card"><div class="empty">
+      <span class="big">👤</span>
+      Hisobingiz hali kitobxon kartasiga bog'lanmagan.<br>
+      <span class="small">Kutubxonachiga murojaat qiling.</span>
+    </div></div>
+  {% endif %}
+
+{% else %}
+  {# ---------- Administrator / Kutubxonachi paneli ---------- #}
+  <div class="stat-grid">
+    <div class="stat">
+      <div class="icon i-blue">📚</div>
+      <div><div class="label">Jami kitoblar</div><div class="value">{{ stat_total_books|spaced }}</div></div>
+    </div>
+    <div class="stat">
+      <div class="icon i-green">👥</div>
+      <div><div class="label">Jami kitobxonlar</div><div class="value">{{ stat_total_readers|spaced }}</div></div>
+    </div>
+    <div class="stat">
+      <div class="icon i-amber">✅</div>
+      <div><div class="label">Berilgan kitoblar</div><div class="value">{{ stat_issued|spaced }}</div></div>
+    </div>
+    <div class="stat">
+      <div class="icon i-purple">📗</div>
+      <div><div class="label">Mavjud kitoblar</div><div class="value">{{ stat_available|spaced }}</div></div>
+    </div>
+    <div class="stat">
+      <div class="icon i-red">📅</div>
+      <div><div class="label">Muddati o'tgan</div><div class="value">{{ stat_overdue|spaced }}</div></div>
+    </div>
+    <div class="stat">
+      <div class="icon i-navy">📆</div>
+      <div><div class="label">Bugun berilgan</div><div class="value">{{ stat_today_issued|spaced }}</div></div>
+    </div>
+  </div>
+
+  <div class="toolbar">
+    <a href="{% url 'loans:issue' %}" class="btn btn-primary">⬆️ Kitob berish</a>
+    <a href="{% url 'loans:return' %}" class="btn btn-green">⬇️ Kitob qaytarish</a>
+    <a href="{% url 'books:create' %}" class="btn btn-light">➕ Yangi kitob</a>
+    <a href="{% url 'readers:create' %}" class="btn btn-light">➕ Yangi kitobxon</a>
+    <span class="spacer"></span>
+    <a href="{% url 'reports:home' %}" class="btn btn-light">📊 Hisobotlar</a>
+  </div>
+
+  <div class="grid-2">
+    <div class="card">
+      <div class="card-head">
+        <h2>Kitoblar statistikasi (oylar bo'yicha)</h2>
+        <span class="small muted">Berilgan kitoblar soni</span>
+      </div>
+      <div class="card-body">
+        <div class="chart">
+          {% for item in chart %}
+            <div class="bar-wrap" title="{{ item.label }}: {{ item.value }} ta">
+              <span class="bar-value">{{ item.value }}</span>
+              <div class="bar" style="height: {{ item.percent }}%"></div>
+              <span class="bar-label">{{ item.label }}</span>
+            </div>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-head"><h2>So'nggi operatsiyalar</h2></div>
+      <div class="card-body">
+        <div class="feed">
+          {% for log in recent_logs %}
+            <div class="feed-item">
+              <div class="dot {% if log.action == 'issue' %}i-amber{% elif log.action == 'return' %}i-green{% elif log.action == 'create' %}i-blue{% elif log.action == 'delete' %}i-red{% else %}i-navy{% endif %}">
+                {% if log.action == 'issue' %}⬆{% elif log.action == 'return' %}⬇{% elif log.action == 'create' %}＋{% elif log.action == 'delete' %}✕{% else %}✎{% endif %}
+              </div>
+              <div class="txt">
+                {{ log.details|truncatechars:70 }}
+                <div class="who">{{ log.user.full_name|default:"Tizim" }}</div>
+              </div>
+              <div class="time">{{ log.created_at|date:"H:i" }}</div>
+            </div>
+          {% empty %}
+            <div class="empty">Hozircha operatsiyalar yo'q</div>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="grid-2" style="margin-top:16px">
+    <div class="card">
+      <div class="card-head">
+        <h2>Muddati o'tgan kitoblar</h2>
+        <a href="{% url 'loans:overdue' %}" class="small">Barchasi →</a>
+      </div>
+      <div class="table-wrap">
+        <table class="data">
+          <thead><tr><th>Kitobxon</th><th>Kitob</th><th>Muddat</th><th>Kechikish</th></tr></thead>
+          <tbody>
+          {% for loan in overdue_loans %}
+            <tr>
+              <td>
+                <a href="{% url 'readers:detail' loan.reader.pk %}">{{ loan.reader.full_name }}</a>
+                <div class="small muted">{{ loan.reader.phone|default:"—" }}</div>
+              </td>
+              <td>{{ loan.copy.book.title|truncatechars:38 }}</td>
+              <td class="nowrap">{{ loan.due_date|date:"d.m.Y" }}</td>
+              <td><span class="badge badge-red">{{ loan.overdue_days }} kun</span></td>
+            </tr>
+          {% empty %}
+            <tr><td colspan="4" class="empty"><span class="big">✅</span>Muddati o'tgan kitob yo'q</td></tr>
+          {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-head"><h2>Eng ko'p o'qilgan kitoblar</h2></div>
+      <div class="table-wrap">
+        <table class="data">
+          <thead><tr><th class="num">№</th><th>Kitob</th><th>Marta</th></tr></thead>
+          <tbody>
+          {% for book in top_books %}
+            <tr>
+              <td class="num">{{ forloop.counter }}</td>
+              <td>
+                <a href="{{ book.get_absolute_url }}">{{ book.title|truncatechars:34 }}</a>
+                <div class="small muted">{{ book.author.full_name }}</div>
+              </td>
+              <td><span class="badge badge-blue">{{ book.loans_count }}</span></td>
+            </tr>
+          {% empty %}
+            <tr><td colspan="3" class="empty">Ma'lumot yo'q</td></tr>
+          {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+{% endif %}
+
+{% endblock %}

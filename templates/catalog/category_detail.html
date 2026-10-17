@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% block page_title %}Toifa: {{ category.name }}{% endblock %}
+{% block content %}
+<div class="toolbar">
+  <a href="{% url 'catalog:home' %}" class="btn btn-light">← Katalog</a>
+  <span class="spacer"></span>
+  {% if can_manage %}<a href="{% url 'catalog:category_update' category.pk %}" class="btn btn-light">✎ Tahrirlash</a>{% endif %}
+</div>
+<div class="card">
+  <div class="card-head"><h2>{{ category }}</h2><span class="small muted">{{ books|length }} ta kitob</span></div>
+  {% if category.description %}<div class="card-body"><p class="muted">{{ category.description }}</p></div>{% endif %}
+  <div class="table-wrap">
+    <table class="data">
+      <thead><tr><th>Kitob</th><th>Muallif</th><th>Mavjud</th></tr></thead>
+      <tbody>
+      {% for book in books %}
+        <tr><td><a href="{{ book.get_absolute_url }}">{{ book.title }}</a></td>
+          <td class="small">{{ book.author.full_name }}</td>
+          <td class="text-center">{{ book.available_quantity }}/{{ book.total_quantity }}</td></tr>
+      {% empty %}
+        <tr><td colspan="3" class="empty">Bu toifada kitob yo'q</td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

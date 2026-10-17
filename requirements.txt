@@ -1,0 +1,15 @@
+Django>=5.0,<6.0
+
+# Hisobotlar va fayllar
+openpyxl>=3.1               # Excel hisobotlar va fond importi
+reportlab>=4.0              # PDF hisobotlar
+qrcode[pil]>=7.4            # Nusxalar uchun QR kod
+Pillow>=10.0                # Rasm (muqova) bilan ishlash
+
+# Serverga joylashtirish uchun
+gunicorn>=22.0              # ishlab chiqarish serveri
+whitenoise>=6.6             # statik fayllarni tarqatish
+psycopg[binary]>=3.1        # PostgreSQL (DATABASE_URL berilganda)
+
+# Eslatma: Telegram va AI so'rovlari standart `urllib` orqali yuboriladi,
+# qo'shimcha kutubxona talab qilinmaydi.

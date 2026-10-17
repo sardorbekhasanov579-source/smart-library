@@ -1,0 +1,15 @@
+{% extends "quizzes/public_base.html" %}
+{% block title %}Internet yo'q{% endblock %}
+
+{% block content %}
+<div class="card center" style="padding:40px 20px">
+  <div style="font-size:46px">📡</div>
+  <h1>Internet aloqasi yo'q</h1>
+  <p class="muted small">
+    Sahifani ochish uchun internetga ulaning. Ilova ochiq qoladi —
+    aloqa tiklangach qayta urinib ko'ring.
+  </p>
+  <button class="btn btn-primary btn-block" style="margin-top:16px"
+          onclick="location.reload()">🔄 Qayta urinish</button>
+</div>
+{% endblock %}

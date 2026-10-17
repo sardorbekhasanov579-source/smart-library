@@ -1,0 +1,92 @@
+{% extends "quizzes/public_base.html" %}
+{% block title %}Kabinet — {{ reader.full_name }}{% endblock %}
+
+{% block top_actions %}
+  <form method="post" action="{% url 'quizzes:logout' %}" style="margin:0">
+    {% csrf_token %}
+    <button type="submit">Chiqish</button>
+  </form>
+{% endblock %}
+
+{% block content %}
+<div class="card">
+  <h1>{{ reader.full_name }}</h1>
+  <div class="meta-row">
+    <span class="chip plain">{{ reader.reader_code }}</span>
+    <span class="chip">{{ reader.get_reader_type_display }}</span>
+    {% if reader.overdue_loans_count %}
+      <span class="chip bad">{{ reader.overdue_loans_count }} ta kechikkan</span>
+    {% endif %}
+  </div>
+</div>
+
+{% if open_assignments %}
+  <div class="card">
+    <h2>📝 Yechilishi kerak testlar</h2>
+    {% for item in open_assignments %}
+      <div class="item">
+        <span class="ico">📖</span>
+        <div class="body">
+          <div class="t">{{ item.quiz.book.title }}</div>
+          <div class="small muted">
+            {{ item.question_count }} ta savol · o'tish {{ item.pass_percent }}%
+            {% if item.deadline %}<br>Muddat: {{ item.deadline|date:"d.m.Y H:i" }}{% endif %}
+          </div>
+          <a href="{{ item.get_absolute_url }}" class="btn btn-primary btn-block"
+             style="margin-top:9px">Testni boshlash</a>
+        </div>
+      </div>
+    {% endfor %}
+  </div>
+{% endif %}
+
+<div class="card">
+  <h2>📚 Qo'lingizdagi kitoblar</h2>
+  {% for loan in loans %}
+    <div class="item">
+      <span class="ico">📗</span>
+      <div class="body">
+        <div class="t">{{ loan.copy.book.title }}</div>
+        <div class="small muted">{{ loan.copy.book.author.full_name }}</div>
+        <div class="meta-row">
+          <span class="chip plain">Berilgan: {{ loan.issue_date|date:"d.m.Y" }}</span>
+          {% if loan.is_overdue %}
+            <span class="chip bad">{{ loan.overdue_days }} kun kechikdi</span>
+          {% elif loan.days_left == 0 %}
+            <span class="chip warn">Bugun qaytarish kuni</span>
+          {% else %}
+            <span class="chip ok">{{ loan.days_left }} kun qoldi</span>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  {% empty %}
+    <div class="empty"><span class="big">📚</span>Qo'lingizda kitob yo'q.</div>
+  {% endfor %}
+</div>
+
+<div class="card">
+  <h2>📊 Test tarixi</h2>
+  {% for item in assignments %}
+    <div class="item">
+      <span class="ico">
+        {% if item.status == "passed" %}✅{% elif item.status == "failed" %}❌
+        {% elif item.status == "expired" %}⌛️{% else %}⏳{% endif %}
+      </span>
+      <div class="body">
+        <div class="t">{{ item.quiz.book.title }}</div>
+        <div class="small muted">
+          {{ item.get_status_display }}
+          {% if item.best_percent %} · {{ item.best_percent }}%{% endif %}
+          · {{ item.created_at|date:"d.m.Y" }}
+        </div>
+      </div>
+      {% if item.is_finished %}
+        <a href="{% url 'quizzes:result' item.token %}" class="small">Natija</a>
+      {% endif %}
+    </div>
+  {% empty %}
+    <div class="empty"><span class="big">📊</span>Hali test yechmagansiz.</div>
+  {% endfor %}
+</div>
+{% endblock %}

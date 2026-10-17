@@ -1,0 +1,75 @@
+{% extends "base.html" %}
+{% load library_extras %}
+{% block title %}Kitobxonlar — {{ LIBRARY_NAME }}{% endblock %}
+{% block page_title %}Kitobxonlar{% endblock %}
+
+{% block content %}
+<div class="toolbar">
+  <span class="strong">Jami: {{ total_count|spaced }} ta</span>
+  <span class="spacer"></span>
+  <a href="{% url 'readers:create' %}" class="btn btn-primary">➕ Yangi kitobxon</a>
+  <a href="{% url 'reports:excel' %}?type=readers" class="btn btn-light">⬇ Excel</a>
+</div>
+
+<div class="card mb-2">
+  <div class="card-body">
+    <form method="get" class="filters">
+      <div class="field" style="flex:2;min-width:220px">
+        <label>Qidiruv</label>
+        <input type="search" name="q" class="form-input" value="{{ filters.q|default:'' }}"
+               placeholder="Ism, kod, telefon yoki email">
+      </div>
+      <div class="field"><label>Holat</label>
+        <select name="status" class="form-select"><option value="">Barchasi</option>
+          {% for code, label in statuses %}<option value="{{ code }}" {% if filters.status == code %}selected{% endif %}>{{ label }}</option>{% endfor %}
+        </select></div>
+      <div class="field"><label>Turi</label>
+        <select name="type" class="form-select"><option value="">Barchasi</option>
+          {% for code, label in types %}<option value="{{ code }}" {% if filters.type == code %}selected{% endif %}>{{ label }}</option>{% endfor %}
+        </select></div>
+      <div class="field"><label>&nbsp;</label>
+        <label class="small" style="display:flex;align-items:center;gap:6px;font-weight:400;padding:9px 0">
+          <input type="checkbox" name="debtors" value="1" {% if filters.debtors == '1' %}checked{% endif %}>
+          Faqat qarzdorlar
+        </label></div>
+      <button class="btn btn-primary" type="submit">Filtrlash</button>
+      <a href="{% url 'readers:list' %}" class="btn btn-light">Tozalash</a>
+    </form>
+  </div>
+</div>
+
+<div class="card">
+  <div class="table-wrap">
+    <table class="data">
+      <thead><tr><th>Kodi</th><th>F.I.Sh.</th><th>Turi</th><th>Telefon</th>
+        <th>Ro'yxatdan</th><th>Qo'lida</th><th>Holat</th><th></th></tr></thead>
+      <tbody>
+      {% for reader in readers %}
+        <tr>
+          <td class="small nowrap"><b>{{ reader.reader_code }}</b></td>
+          <td><a href="{{ reader.get_absolute_url }}">{{ reader.full_name }}</a>
+            {% if reader.email %}<div class="small muted">{{ reader.email }}</div>{% endif %}</td>
+          <td class="small">{{ reader.get_reader_type_display }}</td>
+          <td class="small nowrap">{{ reader.phone|default:"—" }}</td>
+          <td class="small nowrap">{{ reader.registration_date|date:"d.m.Y" }}</td>
+          <td class="text-center">
+            {% if reader.loans_active %}<span class="badge badge-blue">{{ reader.loans_active }}</span>
+            {% else %}<span class="muted">0</span>{% endif %}
+          </td>
+          <td>{{ reader|status_badge }}</td>
+          <td><div class="row-actions">
+            <a href="{% url 'readers:update' reader.pk %}" class="btn btn-light btn-sm">✎</a>
+            {% if reader.status == 'active' %}
+              <a href="{% url 'loans:issue' %}?reader={{ reader.pk }}" class="btn btn-primary btn-sm">Berish</a>
+            {% endif %}
+          </div></td>
+        </tr>
+      {% empty %}
+        <tr><td colspan="8" class="empty"><span class="big">👥</span>Kitobxon topilmadi</td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% include "_pagination.html" %}
+</div>
+{% endblock %}

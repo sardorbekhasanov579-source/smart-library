@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% block title %}Sozlamalar — {{ LIBRARY_NAME }}{% endblock %}
+{% block page_title %}Tizim sozlamalari{% endblock %}
+
+{% block content %}
+<div class="card" style="max-width:800px">
+  <div class="card-head"><h2>Parametrlar</h2></div>
+  <div class="card-body">
+    <form method="post">
+      {% csrf_token %}
+      {% for item in settings %}
+        <div class="field" style="margin-bottom:16px">
+          <label>{{ item.description|default:item.key }}</label>
+          <input type="text" name="setting_{{ item.key }}" class="form-input" value="{{ item.value }}">
+          <div class="help">Kalit: <code>{{ item.key }}</code></div>
+        </div>
+      {% endfor %}
+      <div class="form-actions">
+        <button class="btn btn-primary" type="submit">💾 Saqlash</button>
+        <a href="{% url 'core:dashboard' %}" class="btn btn-light">Bekor qilish</a>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}

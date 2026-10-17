@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+{% block page_title %}Mualliflar{% endblock %}
+{% block content %}
+<div class="toolbar">
+  <form method="get" style="display:flex;gap:8px">
+    <input type="search" name="q" class="form-input" value="{{ request.GET.q|default:'' }}" placeholder="Muallif ismi">
+    <button class="btn btn-primary" type="submit">Qidirish</button>
+  </form>
+  <span class="spacer"></span>
+  {% if can_manage %}<a href="{% url 'catalog:author_create' %}" class="btn btn-primary">➕ Yangi muallif</a>{% endif %}
+</div>
+<div class="card">
+  <div class="table-wrap">
+    <table class="data">
+      <thead><tr><th class="num">№</th><th>Muallif</th><th>Tug'ilgan yili</th><th>Kitoblar</th>{% if can_manage %}<th></th>{% endif %}</tr></thead>
+      <tbody>
+      {% for author in authors %}
+        <tr>
+          <td class="num">{{ forloop.counter }}</td>
+          <td><a href="{% url 'catalog:author_detail' author.pk %}"><b>{{ author.full_name }}</b></a>
+            {% if author.description %}<div class="small muted">{{ author.description|truncatechars:70 }}</div>{% endif %}</td>
+          <td class="small">{{ author.birth_year|default:"—" }}</td>
+          <td><span class="badge badge-blue">{{ author.books_total }}</span></td>
+          {% if can_manage %}<td><a href="{% url 'catalog:author_update' author.pk %}" class="btn btn-light btn-sm">✎</a></td>{% endif %}
+        </tr>
+      {% empty %}
+        <tr><td colspan="5" class="empty"><span class="big">✍️</span>Muallif topilmadi</td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% include "_pagination.html" %}
+</div>
+{% endblock %}

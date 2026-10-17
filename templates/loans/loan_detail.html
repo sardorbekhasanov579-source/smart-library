@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% load library_extras %}
+{% block title %}Operatsiya #{{ loan.pk }} — {{ LIBRARY_NAME }}{% endblock %}
+{% block page_title %}Operatsiya #{{ loan.pk }}{% endblock %}
+
+{% block content %}
+<div class="toolbar">
+  <a href="{% url 'loans:list' %}" class="btn btn-light">← Operatsiyalar</a>
+  <span class="spacer"></span>
+  {% if loan.is_active %}
+    <form method="post" action="{% url 'loans:extend' loan.pk %}" style="display:flex;gap:7px">
+      {% csrf_token %}
+      <input type="number" name="days" value="7" min="1" max="90" class="form-input" style="width:84px">
+      <button class="btn btn-amber" type="submit">⏳ Uzaytirish</button>
+    </form>
+    <a href="{% url 'loans:return' %}?q={{ loan.copy.inventory_number }}" class="btn btn-green">⬇️ Qaytarib olish</a>
+  {% endif %}
+</div>
+
+<div class="grid-2">
+  <div class="card">
+    <div class="card-head"><h2>Operatsiya tafsilotlari</h2>{{ loan|status_badge }}</div>
+    <div class="card-body">
+      <dl class="kv">
+        <dt>Kitobxon</dt><dd><a href="{% url 'readers:detail' loan.reader.pk %}"><b>{{ loan.reader.full_name }}</b></a>
+          ({{ loan.reader.reader_code }})</dd>
+        <dt>Telefon</dt><dd>{{ loan.reader.phone|default:"—" }}</dd>
+        <dt>Kitob</dt><dd><a href="{{ loan.copy.book.get_absolute_url }}">{{ loan.copy.book.title }}</a></dd>
+        <dt>Muallif</dt><dd>{{ loan.copy.book.author.full_name }}</dd>
+        <dt>Inventar raqami</dt><dd>{{ loan.copy.inventory_number }}</dd>
+        <dt>Berilgan sana</dt><dd>{{ loan.issue_date|date:"d.m.Y" }}</dd>
+        <dt>Qaytarish muddati</dt><dd>{{ loan.due_date|date:"d.m.Y" }}</dd>
+        <dt>Qaytarilgan sana</dt><dd>{{ loan.return_date|date:"d.m.Y"|default:"— hali qaytarilmagan" }}</dd>
+        {% if loan.is_overdue %}
+          <dt>Kechikish</dt><dd><span class="badge badge-red">{{ loan.overdue_days }} kun</span></dd>
+        {% endif %}
+        <dt>Bergan xodim</dt><dd>{{ loan.issued_by.full_name|default:"—" }}</dd>
+        <dt>Qabul qilgan</dt><dd>{{ loan.received_by.full_name|default:"—" }}</dd>
+        {% if loan.note %}<dt>Izoh</dt><dd>{{ loan.note }}</dd>{% endif %}
+      </dl>
+    </div>
+  </div>
+</div>
+{% endblock %}
