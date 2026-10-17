@@ -24,6 +24,12 @@ media/
 ~$*
 !.github/**/*.xlsx
 
+# Bazadan olingan nusxalar (ichida shaxsiy ma'lumotlar bo'ladi!)
+malumotlar.json
+*dump*.json
+*backup*.json
+db_*.json
+
 # Python
 __pycache__/
 *.py[cod]
@@ -53,3 +59,8 @@ local_settings.py
 .DS_Store
 Thumbs.db
 desktop.ini
+# Bazadan olingan nusxalar — ichida telefon raqamlar, parol xeshlari,
+# bot tokeni va AI kalitlari bor. Hech qachon commit qilinmasin.
+/*.json
+d?_*.json
+d??_*.json
