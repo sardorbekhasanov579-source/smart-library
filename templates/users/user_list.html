@@ -32,7 +32,10 @@
           <td>{{ u|status_badge }}</td>
           <td class="small muted nowrap">{{ u.created_at|date:"d.m.Y" }}</td>
           <td><div class="row-actions">
-            <a href="{% url 'users:update' u.pk %}" class="btn btn-light btn-sm">✎</a>
+            <a href="{% url 'users:update' u.pk %}" class="btn btn-light btn-sm"
+               title="Tahrirlash">✎</a>
+            <a href="{% url 'users:password_reset' u.pk %}" class="btn btn-light btn-sm"
+               title="Parolni tiklash">🔑</a>
             {% if u.pk != user.pk %}
               <form method="post" action="{% url 'users:toggle_status' u.pk %}" class="inline-form">
                 {% csrf_token %}

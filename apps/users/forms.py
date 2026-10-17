@@ -64,6 +64,28 @@ class UserCreateForm(forms.ModelForm):
         return user
 
 
+class AdminPasswordResetForm(forms.Form):
+    """Administrator boshqa foydalanuvchiga yangi parol belgilashi uchun."""
+
+    password1 = forms.CharField(
+        label="Yangi parol",
+        min_length=6,
+        widget=forms.TextInput(attrs={**INPUT, "autocomplete": "new-password"}),
+        help_text="Kamida 6 ta belgi. Parol ko'rinib turadi — nusxa olib foydalanuvchiga bering.",
+    )
+    password2 = forms.CharField(
+        label="Parolni takrorlang",
+        widget=forms.TextInput(attrs={**INPUT, "autocomplete": "new-password"}),
+    )
+
+    def clean(self):
+        cleaned = super().clean()
+        p1, p2 = cleaned.get("password1"), cleaned.get("password2")
+        if p1 and p2 and p1 != p2:
+            self.add_error("password2", "Parollar mos kelmadi.")
+        return cleaned
+
+
 class UserChangeForm(forms.ModelForm):
     class Meta:
         model = User

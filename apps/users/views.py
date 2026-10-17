@@ -2,13 +2,19 @@
 from django.contrib import messages
 from django.contrib.auth import views as auth_views
 from django.db.models import Q
-from django.shortcuts import get_object_or_404, redirect
+from django.contrib.auth import update_session_auth_hash
+from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse_lazy
 from django.views.generic import CreateView, DeleteView, ListView, UpdateView, View
 
 from apps.core.mixins import AdminRequiredMixin
 from apps.core.models import AuditLog
-from apps.users.forms import LoginForm, UserChangeForm, UserCreateForm
+from apps.users.forms import (
+    AdminPasswordResetForm,
+    LoginForm,
+    UserChangeForm,
+    UserCreateForm,
+)
 from apps.users.models import Role, User, UserStatus
 
 
@@ -132,6 +138,54 @@ class UserToggleStatusView(AdminRequiredMixin, View):
         )
         user.save(update_fields=["status"])
         messages.success(request, f"{user.full_name}: {user.get_status_display()}")
+        return redirect("users:list")
+
+
+class UserPasswordResetView(AdminRequiredMixin, View):
+    """Administrator foydalanuvchiga yangi parol belgilaydi.
+
+    Kutubxonachi parolini unutsa shu sahifadan tiklanadi — eski parolni
+    bilish shart emas.
+    """
+
+    template_name = "users/password_reset.html"
+
+    def get(self, request, pk):
+        target = get_object_or_404(User, pk=pk)
+        return render(
+            request,
+            self.template_name,
+            {"target": target, "form": AdminPasswordResetForm()},
+        )
+
+    def post(self, request, pk):
+        target = get_object_or_404(User, pk=pk)
+        form = AdminPasswordResetForm(request.POST)
+        if not form.is_valid():
+            return render(
+                request, self.template_name, {"target": target, "form": form}
+            )
+
+        password = form.cleaned_data["password1"]
+        target.set_password(password)
+        target.save(update_fields=["password"])
+
+        # O'z parolini o'zgartirgan bo'lsa, seansdan chiqib ketmasin
+        if target.pk == request.user.pk:
+            update_session_auth_hash(request, target)
+
+        AuditLog.log(
+            user=request.user,
+            action=AuditLog.Action.UPDATE,
+            entity_type="user",
+            entity_id=target.pk,
+            details=f"{target.full_name} uchun parol tiklandi",
+        )
+        messages.success(
+            request,
+            f"{target.full_name} uchun yangi parol o'rnatildi: {password} — "
+            "nusxa olib foydalanuvchiga bering.",
+        )
         return redirect("users:list")
 
 

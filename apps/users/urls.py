@@ -12,6 +12,7 @@ urlpatterns = [
     path("<int:pk>/tahrirlash/", views.UserUpdateView.as_view(), name="update"),
     path("<int:pk>/ochirish/", views.UserDeleteView.as_view(), name="delete"),
     path("<int:pk>/holat/", views.UserToggleStatusView.as_view(), name="toggle_status"),
+    path("<int:pk>/parol/", views.UserPasswordResetView.as_view(), name="password_reset"),
     path("profil/", views.ProfileView.as_view(), name="profile"),
     path("parol/", views.PasswordChangeView.as_view(), name="password_change"),
 ]

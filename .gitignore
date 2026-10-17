@@ -24,8 +24,13 @@ media/
 ~$*
 !.github/**/*.xlsx
 
-# Bazadan olingan nusxalar (ichida shaxsiy ma'lumotlar bo'ladi!)
+# Bazadan olingan nusxalar — ichida kitobxonlarning telefon raqamlari,
+# parol xeshlari, bot tokeni va AI kalitlari bo'ladi. Hech qachon commit qilinmasin.
+# Loyiha ildizidagi BARCHA .json fayllar to'siladi (ehtiyot chorasi sifatida).
+/*.json
 malumotlar.json
+d?_*.json
+d??_*.json
 *dump*.json
 *backup*.json
 db_*.json
@@ -59,8 +64,3 @@ local_settings.py
 .DS_Store
 Thumbs.db
 desktop.ini
-# Bazadan olingan nusxalar — ichida telefon raqamlar, parol xeshlari,
-# bot tokeni va AI kalitlari bor. Hech qachon commit qilinmasin.
-/*.json
-d?_*.json
-d??_*.json

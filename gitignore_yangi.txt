@@ -1,0 +1,66 @@
+# ---------------------------------------------------------------------------
+# MUHIM: repozitoriya ochiq (public). Quyidagi fayllar hech qachon
+# GitHub'ga tushmasligi kerak — ularda kitobxonlarning shaxsiy ma'lumotlari,
+# bot tokeni va API kalitlari bo'ladi.
+# ---------------------------------------------------------------------------
+
+# Ma'lumotlar bazasi (kitobxonlar, telefon raqamlar, tokenlar shu yerda!)
+db.sqlite3
+db.sqlite3-journal
+*.sqlite3
+*.db
+
+# Maxfiy kalitlar
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# Yuklangan fayllar va fond jadvallari
+media/
+*.xlsx
+*.xls
+~$*
+!.github/**/*.xlsx
+
+# Bazadan olingan nusxalar — ichida kitobxonlarning telefon raqamlari,
+# parol xeshlari, bot tokeni va AI kalitlari bo'ladi. Hech qachon commit qilinmasin.
+# Loyiha ildizidagi BARCHA .json fayllar to'siladi (ehtiyot chorasi sifatida).
+/*.json
+malumotlar.json
+d?_*.json
+d??_*.json
+*dump*.json
+*backup*.json
+db_*.json
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+env/
+.Python
+*.egg-info/
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Django
+staticfiles/
+/static_collected/
+*.log
+local_settings.py
+
+# Muharrirlar va OS
+.vscode/
+.idea/
+.windsurf/
+.codeium/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+desktop.ini
