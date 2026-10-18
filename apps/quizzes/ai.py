@@ -1,8 +1,10 @@
 """Kitob bo'yicha test savollarini avtomatik yaratish.
 
-Ikki provayder qo'llanadi (Sozlamalardagi `ai_provider` qiymati bo'yicha):
+Uch provayder qo'llanadi (Sozlamalardagi `ai_provider` qiymati bo'yicha):
   * anthropic - Claude API  (kalit: ANTHROPIC_API_KEY yoki sozlamadagi ai_api_key)
   * openai    - OpenAI API  (kalit: OPENAI_API_KEY  yoki sozlamadagi ai_api_key)
+  * gemini    - Google Gemini (kalit: GEMINI_API_KEY yoki sozlamadagi ai_api_key)
+                Gemini'da bepul tarif bor: https://aistudio.google.com/apikey
 
 Kalit bo'lmasa yoki so'rov muvaffaqiyatsiz bo'lsa — kitob kartasidagi
 ma'lumotlar (nomi, muallifi, toifasi, nashr yili, nashriyoti, tavsifi)
@@ -75,7 +77,20 @@ def get_api_key(provider=None):
         return key
     if provider == "openai":
         return (os.environ.get("OPENAI_API_KEY", "") or "").strip()
+    if provider == "gemini":
+        return (
+            os.environ.get("GEMINI_API_KEY", "")
+            or os.environ.get("GOOGLE_API_KEY", "")
+            or ""
+        ).strip()
     return (os.environ.get("ANTHROPIC_API_KEY", "") or "").strip()
+
+
+DEFAULT_MODELS = {
+    "anthropic": "claude-sonnet-4-5",
+    "openai": "gpt-4o-mini",
+    "gemini": "gemini-2.0-flash",
+}
 
 
 def get_model(provider=None):
@@ -83,7 +98,7 @@ def get_model(provider=None):
     model = _setting("ai_model", "")
     if model:
         return model
-    return "gpt-4o-mini" if provider == "openai" else "claude-sonnet-4-5"
+    return DEFAULT_MODELS.get(provider, DEFAULT_MODELS["anthropic"])
 
 
 def is_configured():
@@ -148,6 +163,31 @@ def _call_openai(prompt, api_key, model):
     if not choices:
         return ""
     return choices[0].get("message", {}).get("content", "")
+
+
+def _call_gemini(prompt, api_key, model):
+    """Google Gemini (Generative Language API). Bepul tarifi bor."""
+    body = _post_json(
+        f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent",
+        {
+            "contents": [{"parts": [{"text": prompt}]}],
+            "generationConfig": {
+                "temperature": 0.7,
+                # Javob to'g'ridan-to'g'ri JSON bo'lib kelsin
+                "responseMimeType": "application/json",
+            },
+        },
+        {"Content-Type": "application/json", "x-goog-api-key": api_key},
+    )
+    candidates = body.get("candidates") or []
+    if not candidates:
+        # Ba'zan xavfsizlik filtri tufayli javob bo'lmaydi
+        reason = (body.get("promptFeedback") or {}).get("blockReason")
+        if reason:
+            raise RuntimeError(f"Gemini javobni bloklandi: {reason}")
+        return ""
+    parts = (candidates[0].get("content") or {}).get("parts") or []
+    return "".join(p.get("text", "") for p in parts if isinstance(p, dict))
 
 
 # ---------------------------------------------------------------------------
@@ -229,6 +269,8 @@ def generate_questions(book, count=30):
     try:
         if provider == "openai":
             raw = _call_openai(prompt, api_key, get_model(provider))
+        elif provider == "gemini":
+            raw = _call_gemini(prompt, api_key, get_model(provider))
         else:
             raw = _call_anthropic(prompt, api_key, get_model(provider))
     except RuntimeError as exc:

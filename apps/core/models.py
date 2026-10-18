@@ -101,7 +101,8 @@ class SystemSetting(models.Model):
              "Natijalar yuboriladigan admin chat ID lari (vergul bilan)"),
             ("telegram_bot_username", "",
              "Bot username (avtomatik aniqlanadi, masalan: smart_library_bot)"),
-            ("ai_provider", "anthropic", "Savol generatori: anthropic yoki openai"),
+            ("ai_provider", "anthropic",
+             "Savol generatori: anthropic, openai yoki gemini (gemini'da bepul tarif bor)"),
             ("ai_api_key", "", "AI provayderining API kaliti"),
             ("ai_model", "", "AI modeli nomi (bo'sh bo'lsa standart model)"),
         ]
