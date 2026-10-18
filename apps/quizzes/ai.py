@@ -86,10 +86,13 @@ def get_api_key(provider=None):
     return (os.environ.get("ANTHROPIC_API_KEY", "") or "").strip()
 
 
+# Model nomlari vaqt o'tishi bilan o'zgaradi. Agar provayder "bu model
+# eskirgan" desa, Sozlamalardagi `ai_model` ga yangi nomni yozish kifoya —
+# kodga tegish shart emas.
 DEFAULT_MODELS = {
     "anthropic": "claude-sonnet-4-5",
     "openai": "gpt-4o-mini",
-    "gemini": "gemini-2.0-flash",
+    "gemini": "gemini-3.8-flash",
 }
 
 
