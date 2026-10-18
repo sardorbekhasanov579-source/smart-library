@@ -15,6 +15,7 @@ import logging
 import os
 import random
 import re
+import time
 import urllib.error
 import urllib.request
 
@@ -111,21 +112,43 @@ def is_configured():
 # ---------------------------------------------------------------------------
 # HTTP yordamchisi
 # ---------------------------------------------------------------------------
+# Vaqtinchalik xatolar: model band, limit, server nosozligi.
+# Bularda darhol taslim bo'lmay, biroz kutib qayta so'raymiz.
+RETRY_CODES = {429, 500, 502, 503, 504}
+RETRY_DELAYS = (2, 6, 12)  # sekundlarda
+
+
 def _post_json(url, payload, headers, timeout=TIMEOUT):
     data = json.dumps(payload).encode("utf-8")
-    request = urllib.request.Request(url, data=data, headers=headers)
-    try:
-        with urllib.request.urlopen(request, timeout=timeout) as response:
-            return json.loads(response.read().decode("utf-8"))
-    except urllib.error.HTTPError as exc:
-        body = ""
+    last_error = None
+
+    for attempt in range(len(RETRY_DELAYS) + 1):
+        request = urllib.request.Request(url, data=data, headers=headers)
         try:
-            body = exc.read().decode("utf-8")[:500]
-        except Exception:
-            pass
-        raise RuntimeError(f"HTTP {exc.code}: {body}") from exc
-    except urllib.error.URLError as exc:
-        raise RuntimeError(f"Ulanib bo'lmadi: {exc.reason}") from exc
+            with urllib.request.urlopen(request, timeout=timeout) as response:
+                return json.loads(response.read().decode("utf-8"))
+        except urllib.error.HTTPError as exc:
+            body = ""
+            try:
+                body = exc.read().decode("utf-8")[:500]
+            except Exception:
+                pass
+            last_error = RuntimeError(f"HTTP {exc.code}: {body}")
+            if exc.code not in RETRY_CODES or attempt >= len(RETRY_DELAYS):
+                raise last_error from exc
+            delay = RETRY_DELAYS[attempt]
+            logger.info(
+                "AI vaqtinchalik band (HTTP %s), %s sekunddan keyin qayta urinamiz",
+                exc.code, delay,
+            )
+            time.sleep(delay)
+        except urllib.error.URLError as exc:
+            last_error = RuntimeError(f"Ulanib bo'lmadi: {exc.reason}")
+            if attempt >= len(RETRY_DELAYS):
+                raise last_error from exc
+            time.sleep(RETRY_DELAYS[attempt])
+
+    raise last_error or RuntimeError("Noma'lum xato")
 
 
 # ---------------------------------------------------------------------------
