@@ -94,7 +94,15 @@ class CronRunView(View):
             try:
                 call_command("send_due_quizzes", verbosity=1)
             except Exception:  # pragma: no cover
-                logger.exception("Kunlik vazifa xatosi")
+                logger.exception("Kunlik vazifa xatosi: send_due_quizzes")
+
+            # Ijtimoiy faollik ballarini yangilab qo'yamiz
+            try:
+                call_command("recalc_activity", verbosity=0)
+            except Exception:  # pragma: no cover
+                logger.exception("Kunlik vazifa xatosi: recalc_activity")
 
         threading.Thread(target=task, daemon=True).start()
-        return JsonResponse({"ok": True, "started": "send_due_quizzes"})
+        return JsonResponse(
+            {"ok": True, "started": ["send_due_quizzes", "recalc_activity"]}
+        )

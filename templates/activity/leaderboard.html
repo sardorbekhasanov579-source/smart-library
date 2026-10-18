@@ -1,0 +1,151 @@
+{% extends "base.html" %}
+{% load library_extras %}
+{% block title %}Ijtimoiy faollik — {{ LIBRARY_NAME }}{% endblock %}
+{% block page_title %}Ijtimoiy faollik reytingi{% endblock %}
+
+{% block content %}
+<div class="stat-grid">
+  <div class="stat">
+    <div class="icon i-purple">🏅</div>
+    <div><div class="label">Faol kitobxonlar</div>
+      <div class="value">{{ totals.readers|spaced }}</div></div>
+  </div>
+  <div class="stat">
+    <div class="icon i-green">⭐</div>
+    <div><div class="label">Jami ball ({{ period_name|lower }})</div>
+      <div class="value">{{ totals.points|spaced }}</div></div>
+  </div>
+  <div class="stat">
+    <div class="icon i-blue">📋</div>
+    <div><div class="label">Faollik yozuvlari</div>
+      <div class="value">{{ totals.records|spaced }}</div></div>
+  </div>
+</div>
+
+<div class="toolbar">
+  <span class="strong">{{ period_name }}</span>
+  {% if date_from or date_to %}
+    <span class="small muted">{{ date_from|date:"d.m.Y"|default:"..." }} —
+      {{ date_to|date:"d.m.Y"|default:"..." }}</span>
+  {% endif %}
+  <span class="spacer"></span>
+  <a href="{% url 'activity:export' %}?{{ request.GET.urlencode }}" class="btn btn-light">⬇ Excel</a>
+  {% if is_admin_role %}
+    <form method="post" action="{% url 'activity:recalc' %}" class="inline-form">
+      {% csrf_token %}
+      <button class="btn btn-primary" type="submit">🔄 Qayta hisoblash</button>
+    </form>
+  {% endif %}
+</div>
+
+<div class="card mb-2">
+  <div class="card-body">
+    <div class="pill-row mb-2">
+      <a href="?" class="pill {% if not filters.davr and not filters.dan %}active{% endif %}">Butun davr</a>
+      <a href="?davr=oy" class="pill {% if filters.davr == 'oy' %}active{% endif %}">Shu oy</a>
+      <a href="?davr=chorak" class="pill {% if filters.davr == 'chorak' %}active{% endif %}">Shu chorak</a>
+      <a href="?davr=semestr" class="pill {% if filters.davr == 'semestr' %}active{% endif %}">Shu semestr</a>
+      <a href="?davr=yil" class="pill {% if filters.davr == 'yil' %}active{% endif %}">Shu yil</a>
+    </div>
+
+    <form method="get" class="filters">
+      <div class="field"><label>Sanadan</label>
+        <input type="date" name="dan" class="form-input" value="{{ filters.dan|default:'' }}"></div>
+      <div class="field"><label>Sanagacha</label>
+        <input type="date" name="gacha" class="form-input" value="{{ filters.gacha|default:'' }}"></div>
+      <div class="field"><label>Kitobxon turi</label>
+        <select name="type" class="form-select"><option value="">Barchasi</option>
+          {% for code, label in types %}
+            <option value="{{ code }}" {% if selected_type == code %}selected{% endif %}>{{ label }}</option>
+          {% endfor %}
+        </select></div>
+      <button class="btn btn-primary" type="submit">Filtrlash</button>
+      <a href="{% url 'activity:leaderboard' %}" class="btn btn-light">Tozalash</a>
+    </form>
+  </div>
+</div>
+
+<div class="grid-2">
+  <div class="card">
+    <div class="card-head">
+      <h2>Reyting</h2>
+      <span class="small muted">{{ shown }} ta ko'rsatilmoqda</span>
+    </div>
+    <div class="table-wrap">
+      <table class="data">
+        <thead><tr><th style="width:60px">O'rin</th><th>Kitobxon</th>
+          <th>Turi</th><th class="text-center">Ball</th><th></th></tr></thead>
+        <tbody>
+        {% for row in rows %}
+          <tr>
+            <td class="text-center">
+              {% if row.rank == 1 %}<span style="font-size:18px">🥇</span>
+              {% elif row.rank == 2 %}<span style="font-size:18px">🥈</span>
+              {% elif row.rank == 3 %}<span style="font-size:18px">🥉</span>
+              {% else %}<b class="muted">{{ row.rank }}</b>{% endif %}
+            </td>
+            <td>
+              <a href="{% url 'activity:reader' row.reader.pk %}">{{ row.reader.full_name }}</a>
+              <div class="small muted">{{ row.reader.reader_code }}{% if row.reader.hemis_id %}
+                · HEMIS: {{ row.reader.hemis_id }}{% endif %}</div>
+            </td>
+            <td class="small">{{ row.reader.get_reader_type_display }}</td>
+            <td class="text-center">
+              <span class="badge {% if row.total > 0 %}badge-green{% elif row.total < 0 %}badge-red{% else %}badge-gray{% endif %}">
+                {{ row.total }}</span>
+            </td>
+            <td><a href="{% url 'activity:reader' row.reader.pk %}"
+                   class="btn btn-light btn-sm">Tarix</a></td>
+          </tr>
+        {% empty %}
+          <tr><td colspan="5">
+            <div class="empty"><span class="big">🏅</span>
+              Hali faollik yozuvlari yo'q.
+              {% if is_admin_role %}«Qayta hisoblash» tugmasini bosing —
+                mavjud operatsiya va testlardan ballar hisoblanadi.{% endif %}</div>
+          </td></tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div>
+    <div class="card mb-2">
+      <div class="card-head"><h2>Qo'lda ball qo'shish</h2></div>
+      <div class="card-body">
+        <form method="post" action="{% url 'activity:award' %}">
+          {% csrf_token %}
+          <div class="form-grid">
+            {% for field in award_form %}{% include "_form_field.html" %}{% endfor %}
+          </div>
+          <div class="form-actions">
+            <button class="btn btn-primary" type="submit">➕ Qo'shish</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-head"><h2>Ball qanday hisoblanadi</h2></div>
+      <div class="card-body">
+        <p class="small muted">
+          Ballar kitob olish, qaytarish va test natijalaridan avtomatik yoziladi.
+          Qiymatlarni Sozlamalar bo'limida o'zgartirish mumkin
+          (<code>activity_points_*</code>).
+        </p>
+        <dl class="kv small" style="grid-template-columns:1fr auto">
+          <dt>Kitob oldi</dt><dd>+1</dd>
+          <dt>Muddatida qaytardi</dt><dd>+3</dd>
+          <dt>Kechiktirdi</dt><dd>−2</dd>
+          <dt>Testdan o'tdi</dt><dd>+10</dd>
+          <dt>Testni a'lo yechdi</dt><dd>+5 qo'shimcha</dd>
+        </dl>
+        <p class="small muted mb-0" style="margin-top:10px">
+          Bu standart qiymatlar — o'zgartirgan bo'lsangiz, Sozlamalardagisi amal qiladi.
+        </p>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

@@ -9,12 +9,13 @@ class ReaderForm(forms.ModelForm):
     class Meta:
         model = Reader
         fields = [
-            "full_name", "reader_code", "phone", "email", "address",
+            "full_name", "reader_code", "hemis_id", "phone", "email", "address",
             "reader_type", "registration_date", "status", "note",
         ]
         widgets = {
             "full_name": forms.TextInput(attrs={**INPUT, "placeholder": "Abdullayev Aziz"}),
             "reader_code": forms.TextInput(attrs={**INPUT, "placeholder": "KX-000001"}),
+            "hemis_id": forms.TextInput(attrs={**INPUT, "placeholder": "HEMIS raqami"}),
             "phone": forms.TextInput(attrs={**INPUT, "placeholder": "+998 90 123 45 67"}),
             "email": forms.EmailInput(attrs=INPUT),
             "address": forms.TextInput(attrs=INPUT),

@@ -24,6 +24,12 @@ class Reader(models.Model):
 
     full_name = models.CharField("F.I.Sh.", max_length=200)
     reader_code = models.CharField("Kitobxon kodi", max_length=32, unique=True)
+    # HEMIS tizimidagi talaba/xodim raqami — ijtimoiy faollikni o'sha tizimga
+    # uzatishda kitobxonni aniqlash uchun ishlatiladi.
+    hemis_id = models.CharField(
+        "HEMIS ID", max_length=32, blank=True, db_index=True,
+        help_text="HEMIS tizimidagi talaba yoki xodim raqami (ixtiyoriy)",
+    )
     phone = models.CharField("Telefon", max_length=32, blank=True)
     email = models.EmailField("Email", blank=True)
     address = models.CharField("Manzil", max_length=255, blank=True)

@@ -80,10 +80,21 @@ class SystemSetting(models.Model):
             getattr(django_settings, "DEFAULT_QUIZ_DAYS_BEFORE_DUE", 1),
         )
 
+    # -- Ijtimoiy faollik (apps.activity) -----------------------------------
+    @classmethod
+    def activity_defaults(cls):
+        """Faollik ballari uchun standart qiymatlar."""
+        try:
+            from apps.activity.models import point_settings_defaults
+
+            return point_settings_defaults()
+        except Exception:  # ilova hali ulanmagan bo'lsa
+            return []
+
     @classmethod
     def defaults(cls):
         """Tizim birinchi ishga tushganda yaratiladigan sozlamalar."""
-        return [
+        return cls.activity_defaults() + [
             ("library_name", "Smart Library", "Kutubxona nomi"),
             ("loan_days", "14", "Kitob berish muddati (kun)"),
             ("max_books_per_reader", "5", "Bir kitobxonga bir vaqtda beriladigan kitoblar soni"),

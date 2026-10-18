@@ -14,6 +14,7 @@ urlpatterns = [
     path("operatsiyalar/", include("apps.loans.urls")),
     path("hisobotlar/", include("apps.reports.urls")),
     path("testlar/", include("apps.quizzes.urls")),
+    path("faollik/", include("apps.activity.urls")),
 
     # --- PWA (telefonga o'rnatiladigan ilova) ---------------------------------
     # Ildizdan beriladi, chunki service worker faqat o'z papkasi va undan

@@ -55,6 +55,11 @@
             <span class="ico">🤖</span> Telegram va AI
           </a>
         {% endif %}
+
+        <div class="nav-section">Faollik</div>
+        <a href="{% url 'activity:leaderboard' %}" class="{% if request.resolver_match.app_name == 'activity' %}active{% endif %}">
+          <span class="ico">🏅</span> Ijtimoiy faollik
+        </a>
       {% endif %}
 
       <div class="nav-section">Ma'lumot</div>

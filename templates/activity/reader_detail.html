@@ -1,0 +1,109 @@
+{% extends "base.html" %}
+{% load library_extras %}
+{% block title %}{{ reader.full_name }} — faollik{% endblock %}
+{% block page_title %}Faollik tarixi{% endblock %}
+
+{% block content %}
+<div class="toolbar">
+  <a href="{% url 'activity:leaderboard' %}" class="btn btn-light">‹ Reyting</a>
+  <span class="spacer"></span>
+  <a href="{{ reader.get_absolute_url }}" class="btn btn-light">👤 Kitobxon kartasi</a>
+</div>
+
+<div class="grid-2">
+  <div>
+    <div class="card mb-2">
+      <div class="card-head">
+        <h2>{{ reader.full_name }}</h2>
+        <span class="badge {% if total > 0 %}badge-green{% elif total < 0 %}badge-red{% else %}badge-gray{% endif %}">
+          Jami: {{ total }} ball</span>
+      </div>
+      <div class="card-body">
+        <dl class="kv">
+          <dt>Kitobxon kodi</dt><dd>{{ reader.reader_code }}</dd>
+          <dt>HEMIS ID</dt><dd>{{ reader.hemis_id|default:"—" }}</dd>
+          <dt>Turi</dt><dd>{{ reader.get_reader_type_display }}</dd>
+          <dt>Davr</dt><dd>{{ period_name }}</dd>
+        </dl>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-head"><h2>Yozuvlar</h2></div>
+      <div class="table-wrap">
+        <table class="data">
+          <thead><tr><th>Sana</th><th>Nima uchun</th>
+            <th class="text-center">Ball</th><th></th></tr></thead>
+          <tbody>
+          {% for record in records %}
+            <tr>
+              <td class="small nowrap">{{ record.happened_at|date:"d.m.Y" }}</td>
+              <td>
+                {{ record.get_kind_display }}
+                {% if record.note %}<div class="small muted">{{ record.note }}</div>{% endif %}
+                {% if record.loan %}
+                  <div class="small muted">📗 {{ record.loan.copy.book.title }}</div>
+                {% elif record.assignment %}
+                  <div class="small muted">📝 {{ record.assignment.quiz.book.title }}</div>
+                {% endif %}
+                {% if record.awarded_by %}
+                  <div class="small muted">Qo'shdi: {{ record.awarded_by.full_name }}</div>
+                {% endif %}
+              </td>
+              <td class="text-center">
+                <span class="badge {% if record.points > 0 %}badge-green{% elif record.points < 0 %}badge-red{% else %}badge-gray{% endif %}">
+                  {{ record.points }}</span>
+              </td>
+              <td>
+                {% if not record.source_key %}
+                  <form method="post" action="{% url 'activity:delete_record' record.pk %}"
+                        class="inline-form">
+                    {% csrf_token %}
+                    <button class="btn btn-light btn-sm" type="submit"
+                            onclick="return confirm('Yozuv o\'chirilsinmi?')">🗑</button>
+                  </form>
+                {% endif %}
+              </td>
+            </tr>
+          {% empty %}
+            <tr><td colspan="4">
+              <div class="empty"><span class="big">📋</span>Bu davrda yozuv yo'q.</div>
+            </td></tr>
+          {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-head"><h2>Turlar bo'yicha</h2></div>
+    <div class="table-wrap">
+      <table class="data">
+        <thead><tr><th>Turi</th><th class="text-center">Soni</th>
+          <th class="text-center">Ball</th></tr></thead>
+        <tbody>
+        {% for item in breakdown %}
+          <tr>
+            <td class="small">{{ item.label }}</td>
+            <td class="text-center small">{{ item.count }}</td>
+            <td class="text-center">
+              <span class="badge {% if item.total > 0 %}badge-green{% elif item.total < 0 %}badge-red{% else %}badge-gray{% endif %}">
+                {{ item.total }}</span>
+            </td>
+          </tr>
+        {% empty %}
+          <tr><td colspan="3" class="small muted">Ma'lumot yo'q.</td></tr>
+        {% endfor %}
+        </tbody>
+        {% if breakdown %}
+          <tfoot><tr>
+            <th>JAMI</th><th></th>
+            <th class="text-center"><b>{{ total }}</b></th>
+          </tr></tfoot>
+        {% endif %}
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}
