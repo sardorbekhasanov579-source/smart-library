@@ -17,75 +17,62 @@
     </div>
 
     <nav class="sidebar-nav">
-      <a href="{% url 'core:dashboard' %}" class="{% if request.resolver_match.url_name == 'dashboard' %}active{% endif %}">
-        <span class="ico">🏠</span> Bosh sahifa
-      </a>
-      <a href="{% url 'books:list' %}" class="{% if request.resolver_match.app_name == 'books' %}active{% endif %}">
-        <span class="ico">📖</span> Kitoblar
-      </a>
-
-      {% if can_manage %}
+      <div class="nav-section">ASOSIY SAHIFALAR</div>
+      {% if user.is_reader %}
+        <a href="{% url 'core:dashboard' %}" class="{% if request.resolver_match.url_name == 'dashboard' %}active{% endif %}">
+          <span class="ico">👤</span><span>Kitobxon kabineti</span>
+        </a>
+      {% elif can_manage %}
         <a href="{% url 'readers:list' %}" class="{% if request.resolver_match.app_name == 'readers' %}active{% endif %}">
-          <span class="ico">👥</span> Kitobxonlar
+          <span class="ico">👥</span><span>Kitobxonlar</span>
         </a>
-
-        <div class="nav-section">Operatsiyalar</div>
-        <a href="{% url 'loans:issue' %}" class="{% if request.resolver_match.url_name == 'issue' %}active{% endif %}">
-          <span class="ico">⬆️</span> Kitob berish
-        </a>
-        <a href="{% url 'loans:return' %}" class="{% if request.resolver_match.url_name == 'return' %}active{% endif %}">
-          <span class="ico">⬇️</span> Kitob qaytarish
-        </a>
-        <a href="{% url 'loans:list' %}" class="{% if request.resolver_match.url_name == 'list' and request.resolver_match.app_name == 'loans' %}active{% endif %}">
-          <span class="ico">🔁</span> Barcha operatsiyalar
-        </a>
-        <a href="{% url 'loans:overdue' %}" class="{% if request.resolver_match.url_name == 'overdue' %}active{% endif %}">
-          <span class="ico">⏰</span> Muddati o'tganlar
-        </a>
-
-        <div class="nav-section">Testlar</div>
-        <a href="{% url 'quizzes:quiz_list' %}" class="{% if request.resolver_match.url_name == 'quiz_list' or request.resolver_match.url_name == 'quiz_detail' or request.resolver_match.url_name == 'question_edit' %}active{% endif %}">
-          <span class="ico">📝</span> Test to'plamlari
-        </a>
-        <a href="{% url 'quizzes:assignment_list' %}" class="{% if request.resolver_match.url_name == 'assignment_list' or request.resolver_match.url_name == 'assignment_detail' or request.resolver_match.url_name == 'attempt_detail' %}active{% endif %}">
-          <span class="ico">📨</span> Topshiriqlar
-        </a>
-        {% if is_admin_role %}
-          <a href="{% url 'quizzes:telegram_panel' %}" class="{% if request.resolver_match.url_name == 'telegram_panel' %}active{% endif %}">
-            <span class="ico">🤖</span> Telegram va AI
-          </a>
-        {% endif %}
-
-        <div class="nav-section">Faollik</div>
-        <a href="{% url 'activity:leaderboard' %}" class="{% if request.resolver_match.app_name == 'activity' %}active{% endif %}">
-          <span class="ico">🏅</span> Ijtimoiy faollik
+      {% else %}
+        <a href="{% url 'core:dashboard' %}" class="{% if request.resolver_match.url_name == 'dashboard' %}active{% endif %}">
+          <span class="ico">👤</span><span>Kitobxon kabineti</span>
         </a>
       {% endif %}
 
-      <div class="nav-section">Ma'lumot</div>
-      <a href="{% url 'core:search' %}" class="{% if request.resolver_match.url_name == 'search' %}active{% endif %}">
-        <span class="ico">🔍</span> Qidiruv
+      <a href="{% url 'books:list' %}" class="{% if request.resolver_match.app_name == 'books' %}active{% endif %}">
+        <span class="ico">📚</span><span>Kitoblar bazasi</span>
       </a>
-      <a href="{% url 'catalog:home' %}" class="{% if request.resolver_match.app_name == 'catalog' %}active{% endif %}">
-        <span class="ico">🗂️</span> Katalog
-      </a>
+
       {% if can_manage %}
-        <a href="{% url 'reports:home' %}" class="{% if request.resolver_match.app_name == 'reports' %}active{% endif %}">
-          <span class="ico">📊</span> Hisobotlar
+        <a href="{% url 'quizzes:quiz_list' %}" class="{% if request.resolver_match.app_name == 'quizzes' and request.resolver_match.url_name != 'telegram_panel' %}active{% endif %}">
+          <span class="ico">📝</span><span>Testlar</span>
+        </a>
+      {% else %}
+        <a href="{% url 'quizzes:portal' %}" class="{% if request.resolver_match.app_name == 'quizzes' %}active{% endif %}">
+          <span class="ico">📝</span><span>Testlar</span>
         </a>
       {% endif %}
 
       {% if is_admin_role %}
-        <div class="nav-section">Boshqaruv</div>
-        <a href="{% url 'users:list' %}" class="{% if request.resolver_match.app_name == 'users' and request.resolver_match.url_name != 'profile' %}active{% endif %}">
-          <span class="ico">👤</span> Foydalanuvchilar
-        </a>
-        <a href="{% url 'core:audit_log' %}" class="{% if request.resolver_match.url_name == 'audit_log' %}active{% endif %}">
-          <span class="ico">📋</span> Amallar jurnali
-        </a>
         <a href="{% url 'core:settings' %}" class="{% if request.resolver_match.url_name == 'settings' %}active{% endif %}">
-          <span class="ico">⚙️</span> Sozlamalar
+          <span class="ico">⚙️</span><span>Sozlamalar</span>
         </a>
+      {% endif %}
+
+      {% if can_manage %}
+        <details class="nav-more" {% if request.resolver_match.app_name in 'loans,reports,activity,users,catalog' or request.resolver_match.url_name in 'search,audit_log,telegram_panel,assignment_list,assignment_detail,attempt_detail' %}open{% endif %}>
+          <summary><span class="ico">▦</span><span>Qo‘shimcha xizmatlar</span><span class="nav-chevron">⌄</span></summary>
+          <div class="nav-subsection">KITOBXONLAR VA KATALOG</div>
+          <a href="{% url 'catalog:home' %}" class="{% if request.resolver_match.app_name == 'catalog' %}active{% endif %}"><span class="ico">🗂️</span><span>Katalog</span></a>
+          <a href="{% url 'core:search' %}" class="{% if request.resolver_match.url_name == 'search' %}active{% endif %}"><span class="ico">🔎</span><span>Umumiy qidiruv</span></a>
+          <div class="nav-subsection">KITOB OPERATSIYALARI</div>
+          <a href="{% url 'loans:issue' %}" class="{% if request.resolver_match.url_name == 'issue' %}active{% endif %}"><span class="ico">⬆️</span><span>Kitob berish</span></a>
+          <a href="{% url 'loans:return' %}" class="{% if request.resolver_match.url_name == 'return' %}active{% endif %}"><span class="ico">⬇️</span><span>Kitob qaytarish</span></a>
+          <a href="{% url 'loans:list' %}" class="{% if request.resolver_match.url_name == 'list' and request.resolver_match.app_name == 'loans' %}active{% endif %}"><span class="ico">🔁</span><span>Operatsiyalar tarixi</span></a>
+          <a href="{% url 'loans:overdue' %}" class="{% if request.resolver_match.url_name == 'overdue' %}active{% endif %}"><span class="ico">⏰</span><span>Muddati o‘tganlar</span></a>
+          <div class="nav-subsection">TAHLIL VA BOSHQARUV</div>
+          <a href="{% url 'reports:home' %}" class="{% if request.resolver_match.app_name == 'reports' %}active{% endif %}"><span class="ico">📊</span><span>Hisobotlar</span></a>
+          <a href="{% url 'activity:leaderboard' %}" class="{% if request.resolver_match.app_name == 'activity' %}active{% endif %}"><span class="ico">🏅</span><span>Ijtimoiy faollik</span></a>
+          {% if is_admin_role %}
+            <a href="{% url 'quizzes:assignment_list' %}" class="{% if request.resolver_match.url_name in 'assignment_list,assignment_detail,attempt_detail' %}active{% endif %}"><span class="ico">📨</span><span>Test topshiriqlari</span></a>
+            <a href="{% url 'quizzes:telegram_panel' %}" class="{% if request.resolver_match.url_name == 'telegram_panel' %}active{% endif %}"><span class="ico">🤖</span><span>Telegram va AI</span></a>
+            <a href="{% url 'users:list' %}" class="{% if request.resolver_match.app_name == 'users' and request.resolver_match.url_name != 'profile' %}active{% endif %}"><span class="ico">👤</span><span>Foydalanuvchilar</span></a>
+            <a href="{% url 'core:audit_log' %}" class="{% if request.resolver_match.url_name == 'audit_log' %}active{% endif %}"><span class="ico">📋</span><span>Amallar jurnali</span></a>
+          {% endif %}
+        </details>
       {% endif %}
     </nav>
 
