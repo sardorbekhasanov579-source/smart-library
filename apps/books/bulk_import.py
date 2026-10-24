@@ -120,13 +120,17 @@ def parse_workbook(path):
         quantity = _clean_int(cell("quantity"), default=1) or 1
         quantity = max(1, min(quantity, 500))  # bitta qatordan 500 tadan ortiq nusxa bo'lmasin
 
+        year = _clean_int(cell("year"))
+        if year is not None and not (1400 <= year <= 2100):
+            year = None  # ustun chalkashib ketgan bo'lsa (masalan ISBN) - yil deb yozilmaydi
+
         entry = {
             "row_number": number,
             "title": title[:300],
-            "author": cell("author") or "Noma'lum muallif",
-            "category": cell("category") or "Boshqa",
+            "author": (cell("author") or "Noma'lum muallif")[:200],
+            "category": (cell("category") or "Boshqa")[:150],
             "publisher": cell("publisher")[:200],
-            "year": _clean_int(cell("year")),
+            "year": year,
             "isbn": cell("isbn")[:20],
             "quantity": quantity,
             "shelf": cell("shelf")[:50],
