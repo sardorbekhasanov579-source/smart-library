@@ -1,13 +1,16 @@
 """2-modul: Kitoblar - kitoblar va nusxalarni boshqarish."""
 from django.contrib import messages
 from django.db.models import Count, Q
-from django.shortcuts import get_object_or_404, redirect
-from django.urls import reverse_lazy
+from django.shortcuts import get_object_or_404, redirect, render
+from django.urls import reverse, reverse_lazy
 from django.views.generic import (
     CreateView, DeleteView, DetailView, ListView, UpdateView, View,
 )
 
-from apps.books.forms import BookCopyBulkForm, BookCopyForm, BookForm
+from apps.books import bulk_import
+from apps.books.forms import (
+    BookBulkImportForm, BookCopyBulkForm, BookCopyForm, BookForm,
+)
 from apps.books.models import Book, BookCopy, CopyStatus
 from apps.catalog.models import Author, Category
 from apps.core.mixins import AnyRoleMixin, AuditLogMixin, LibrarianRequiredMixin
@@ -226,3 +229,90 @@ class BookCopyDeleteView(LibrarianRequiredMixin, View):
             messages.success(request, f"Nusxa o'chirildi: {number}")
         book.recalc_quantities()
         return redirect(book.get_absolute_url())
+
+
+class BookBulkImportView(LibrarianRequiredMixin, View):
+    """1-bosqich: Excel faylni yuklash va tahlil natijasini ko'rsatish.
+
+    Hech narsa bazaga yozilmaydi - faqat nima bo'lishi ko'rsatiladi,
+    kutubxonachi "Tasdiqlash" tugmasini bosgandan keyingina yoziladi.
+    """
+
+    template_name = "books/bulk_import.html"
+
+    def get(self, request):
+        return render(request, self.template_name, {"form": BookBulkImportForm()})
+
+    def post(self, request):
+        form = BookBulkImportForm(request.POST, request.FILES)
+        if not form.is_valid():
+            return render(request, self.template_name, {"form": form})
+
+        uploaded = form.cleaned_data["file"]
+        token = bulk_import.save_temp_file(uploaded)
+        path = bulk_import.temp_file_path(token)
+
+        try:
+            parsed = bulk_import.parse_workbook(path)
+        except Exception:
+            bulk_import.discard_temp_file(token)
+            messages.error(
+                request,
+                "Faylni o'qib bo'lmadi. Excel (.xlsx) fayl ekanini tekshiring.",
+            )
+            return render(request, self.template_name, {"form": BookBulkImportForm()})
+
+        if parsed["missing_title"]:
+            bulk_import.discard_temp_file(token)
+            messages.error(
+                request,
+                "Faylda kitob nomi ustuni topilmadi. Ustun sarlavhasida "
+                "\"nomi\" yoki \"kitob\" so'zi bo'lishi kerak.",
+            )
+            return render(request, self.template_name, {"form": BookBulkImportForm()})
+
+        if parsed["total"] == 0:
+            bulk_import.discard_temp_file(token)
+            messages.error(request, "Faylda to'ldirilgan qator topilmadi.")
+            return render(request, self.template_name, {"form": BookBulkImportForm()})
+
+        return render(
+            request,
+            "books/bulk_import_preview.html",
+            {"token": token, "result": parsed, "filename": uploaded.name},
+        )
+
+
+class BookBulkImportConfirmView(LibrarianRequiredMixin, View):
+    """2-bosqich: tasdiqlangandan keyin haqiqiy yozish."""
+
+    def post(self, request, token):
+        path = bulk_import.temp_file_path(token)
+        if not path:
+            messages.error(
+                request,
+                "Fayl muddati tugagan yoki topilmadi. Qaytadan yuklang.",
+            )
+            return redirect("books:bulk_import")
+
+        try:
+            parsed = bulk_import.parse_workbook(path)
+            report = bulk_import.commit_rows(parsed["rows"], user=request.user)
+        except Exception:
+            messages.error(
+                request,
+                "Yozishda xatolik yuz berdi. Faylni tekshirib qaytadan urinib ko'ring.",
+            )
+            return redirect("books:bulk_import")
+        finally:
+            bulk_import.discard_temp_file(token)
+
+        messages.success(
+            request,
+            (
+                f"Tayyor! {report['created_books']} ta yangi kitob qo'shildi, "
+                f"{report['reused_books']} ta mavjud kitobga nusxa qo'shildi, "
+                f"jami {report['created_copies']} ta nusxa yaratildi."
+            ),
+        )
+        return redirect(reverse("books:list"))

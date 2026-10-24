@@ -70,3 +70,28 @@ class BookCopyBulkForm(forms.Form):
         label="Inventar prefiksi", required=False,
         widget=forms.TextInput(attrs={**INPUT, "placeholder": "INV-0001"}),
     )
+
+
+class BookBulkImportForm(forms.Form):
+    """Excel fayldan ko'plab kitob qo'shish uchun yuklash formasi."""
+
+    file = forms.FileField(
+        label="Excel fayl (.xlsx)",
+        widget=forms.ClearableFileInput(attrs={
+            "class": "dropzone-input",
+            "accept": ".xlsx,.xlsm",
+        }),
+    )
+
+    def clean_file(self):
+        uploaded = self.cleaned_data["file"]
+        name = (uploaded.name or "").lower()
+        if not name.endswith((".xlsx", ".xlsm")):
+            raise forms.ValidationError(
+                "Faqat Excel fayl (.xlsx) qabul qilinadi."
+            )
+        if uploaded.size > 15 * 1024 * 1024:
+            raise forms.ValidationError(
+                "Fayl juda katta (15 MB dan oshmasligi kerak)."
+            )
+        return uploaded
