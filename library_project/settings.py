@@ -43,8 +43,6 @@ INSTALLED_APPS = [
     "django.contrib.messages",
     "django.contrib.staticfiles",
     "django.contrib.humanize",
-    "rest_framework",
-    "apps.mobile_api",
     # Loyiha ilovalari
     "apps.core",
     "apps.users",
