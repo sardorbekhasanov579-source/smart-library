@@ -14,4 +14,10 @@ urlpatterns = [
     path("<int:pk>/nusxa-koplab/", views.BookCopyBulkCreateView.as_view(), name="copy_bulk"),
     path("nusxa/<int:pk>/tahrirlash/", views.BookCopyUpdateView.as_view(), name="copy_update"),
     path("nusxa/<int:pk>/ochirish/", views.BookCopyDeleteView.as_view(), name="copy_delete"),
+    path("exseldan-qoshish/", views.BookBulkImportView.as_view(), name="bulk_import"),
+    path(
+        "exseldan-qoshish/<str:token>/tasdiqlash/",
+        views.BookBulkImportConfirmView.as_view(),
+        name="bulk_import_confirm",
+    ),
 ]
