@@ -1,0 +1,169 @@
+{% extends "quizzes/reader_base.html" %}
+{% load library_extras %}
+
+{% block title %}Kitoblar bazasi — {{ LIBRARY_NAME|default:"Kutubxona" }}{% endblock %}
+{% block page_name %}Kitoblar bazasi{% endblock %}
+
+{% block content %}
+
+<form class="search" method="get" action="{% url 'quizzes:reader_books' %}" role="search">
+  <span class="ico">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" aria-hidden="true">
+      <circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/>
+    </svg>
+  </span>
+  <input type="search" name="q" value="{{ query }}" inputmode="search"
+         placeholder="Kitob nomi, muallif, ISBN yoki inventar raqam"
+         aria-label="Kitob qidirish">
+  {% if only %}<input type="hidden" name="holat" value="{{ only }}">{% endif %}
+  <button class="go" type="submit" aria-label="Qidirish">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <path d="M5 12h13"/><path d="M13 7l5 5-5 5"/>
+    </svg>
+  </button>
+</form>
+
+<div class="filters">
+  <a href="?{% query_replace holat=None sahifa=None %}" class="{% if not only %}on{% endif %}">Hammasi</a>
+  <a href="?{% query_replace holat='mavjud' sahifa=None %}" class="{% if only == 'mavjud' %}on{% endif %}">Faqat mavjud</a>
+</div>
+
+<p class="result-count">
+  {% if is_search %}
+    {{ total }} ta kitob topildi{% if query %} — «{{ query }}»{% endif %}
+  {% else %}
+    Fondda {{ fond_total }} ta kitob bor. Oxirgi qo'shilganlari:
+  {% endif %}
+</p>
+
+<div class="card">
+  {% if page.object_list %}
+    {% for book in page.object_list %}
+      {% with copies=copies_by_book|getitem:book.id %}
+      <details class="book-row" style="display:block">
+        <summary style="display:flex;gap:12px;align-items:flex-start;cursor:pointer;list-style:none">
+          <div class="cov">
+            {% if book.cover %}
+              <img src="{{ book.cover.url }}" alt="">
+            {% else %}
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M5 4.5h9.5a2 2 0 012 2v13H7a2 2 0 01-2-2v-13z"/><path d="M5 17.5h11.5"/>
+              </svg>
+            {% endif %}
+          </div>
+          <div class="body">
+            <div class="t">{{ book.title }}</div>
+            <div class="a">
+              {{ book.author.full_name|default:"Muallif ko'rsatilmagan" }}
+              {% if book.publication_year %} · {{ book.publication_year }}{% endif %}
+            </div>
+            <div class="meta-row">
+              {% if book.available_quantity %}
+                <span class="chip ok">{{ book.available_quantity }} nusxa mavjud</span>
+              {% else %}
+                <span class="chip bad">Hozir mavjud emas</span>
+              {% endif %}
+
+              {% if book.shelf_location %}
+                <span class="chip shelf">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <path d="M12 21s6.5-5.6 6.5-10.3A6.5 6.5 0 0012 4a6.5 6.5 0 00-6.5 6.7C5.5 15.4 12 21 12 21z"/>
+                    <circle cx="12" cy="10.5" r="2.2"/>
+                  </svg>
+                  Javon: {{ book.shelf_location }}
+                </span>
+              {% endif %}
+
+              {% if book.category %}<span class="chip plain">{{ book.category.name }}</span>{% endif %}
+            </div>
+          </div>
+        </summary>
+
+        {# ------------------- Ochilganda: kitob qayerda turgani ------------------- #}
+        <div style="padding:12px 0 2px 54px">
+          <ul class="facts-list">
+            {% if book.publisher %}
+              <li><span class="k">Nashriyot</span><span class="v">{{ book.publisher }}</span></li>
+            {% endif %}
+            {% if book.isbn %}
+              <li><span class="k">ISBN</span><span class="v">{{ book.isbn }}</span></li>
+            {% endif %}
+            <li>
+              <span class="k">Jami nusxa</span>
+              <span class="v">{{ book.total_quantity }} ta ({{ book.available_quantity }} ta mavjud)</span>
+            </li>
+            <li>
+              <span class="k">Javon manzili</span>
+              <span class="v">
+                {% if book.shelf_location %}
+                  {{ book.shelf_location }}
+                {% else %}
+                  <span class="muted">ko'rsatilmagan — kutubxonachidan so'rang</span>
+                {% endif %}
+              </span>
+            </li>
+          </ul>
+
+          {% if copies %}
+            <div class="section-title" style="margin:13px 2px 7px">
+              <span>Nusxalar</span><span class="line"></span>
+            </div>
+            <ul>
+              {% for copy in copies %}
+                <li style="display:flex;gap:9px;align-items:center;padding:7px 0;border-bottom:1px solid var(--line-2)">
+                  <span class="chip plain">Inv. {{ copy.inventory_number }}</span>
+                  {% if copy.status == 'available' %}
+                    <span class="chip ok">Javonda</span>
+                  {% elif copy.status == 'issued' %}
+                    <span class="chip warn">Berilgan</span>
+                  {% else %}
+                    <span class="chip bad">{{ copy.get_status_display }}</span>
+                  {% endif %}
+                  <span class="spacer"></span>
+                  {% if copy.shelf_location %}
+                    <span class="chip shelf">{{ copy.shelf_location }}</span>
+                  {% endif %}
+                </li>
+              {% endfor %}
+            </ul>
+          {% endif %}
+
+          {% if book.description %}
+            <p class="small muted mt">{{ book.description|truncatewords:45 }}</p>
+          {% endif %}
+
+          <p class="tiny muted mt-sm">
+            Kitobni olish uchun shu inventar raqamni kutubxonachiga aytsangiz kifoya.
+          </p>
+        </div>
+      </details>
+      {% endwith %}
+    {% endfor %}
+  {% else %}
+    <div class="empty">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" aria-hidden="true">
+        <circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/>
+      </svg>
+      <div class="t">Hech narsa topilmadi</div>
+      <div class="d">Kitob nomini qisqartirib yozib ko'ring yoki muallif ismi bilan qidiring.</div>
+    </div>
+  {% endif %}
+</div>
+
+{% if page.has_other_pages %}
+  <nav class="pager" aria-label="Sahifalar">
+    {% if page.has_previous %}
+      <a href="?{% query_replace sahifa=page.previous_page_number %}">Oldingi</a>
+    {% else %}
+      <span class="off">Oldingi</span>
+    {% endif %}
+    <span class="now">{{ page.number }} / {{ page.paginator.num_pages }}</span>
+    {% if page.has_next %}
+      <a href="?{% query_replace sahifa=page.next_page_number %}">Keyingi</a>
+    {% else %}
+      <span class="off">Keyingi</span>
+    {% endif %}
+  </nav>
+{% endif %}
+
+{% endblock %}

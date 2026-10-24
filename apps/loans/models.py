@@ -122,7 +122,8 @@ class Loan(models.Model):
                 "(limit to'lgan, muddati o'tgan kitob bor yoki bloklangan)."
             )
 
-        days = days or SystemSetting.loan_days()
+        # Muddat kitobxonning darajasiga qarab uzayadi (apps.activity.levels)
+        days = days or getattr(reader, "loan_days", None) or SystemSetting.loan_days()
         today = timezone.localdate()
         loan = cls.objects.create(
             reader=reader,

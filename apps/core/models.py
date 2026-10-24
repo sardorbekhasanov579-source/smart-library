@@ -82,6 +82,15 @@ class SystemSetting(models.Model):
 
     # -- Ijtimoiy faollik (apps.activity) -----------------------------------
     @classmethod
+    def level_defaults(cls):
+        """Kitobxon darajalari uchun sozlamalar."""
+        try:
+            from apps.activity.levels import level_settings_defaults
+        except ImportError:
+            return []
+        return level_settings_defaults()
+
+    @classmethod
     def activity_defaults(cls):
         """Faollik ballari uchun standart qiymatlar."""
         try:
@@ -94,8 +103,12 @@ class SystemSetting(models.Model):
     @classmethod
     def defaults(cls):
         """Tizim birinchi ishga tushganda yaratiladigan sozlamalar."""
-        return cls.activity_defaults() + [
+        return cls.activity_defaults() + cls.level_defaults() + [
             ("library_name", "Smart Library", "Kutubxona nomi"),
+            ("library_phone", "",
+             "Kutubxona telefon raqami (kitobxon ilovasida ko'rinadi)"),
+            ("library_hours", "",
+             "Ish vaqti, masalan: Du-Sha 9:00-18:00 (kitobxon ilovasida ko'rinadi)"),
             ("loan_days", "14", "Kitob berish muddati (kun)"),
             ("max_books_per_reader", "5", "Bir kitobxonga bir vaqtda beriladigan kitoblar soni"),
             ("fine_per_day", "0", "Kechikkan har bir kun uchun jarima (so'm)"),

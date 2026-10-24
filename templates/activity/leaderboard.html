@@ -74,7 +74,7 @@
     <div class="table-wrap">
       <table class="data">
         <thead><tr><th style="width:60px">O'rin</th><th>Kitobxon</th>
-          <th>Turi</th><th class="text-center">Ball</th><th></th></tr></thead>
+          <th>Turi</th><th>Daraja</th><th class="text-center">Ball</th><th></th></tr></thead>
         <tbody>
         {% for row in rows %}
           <tr>
@@ -90,6 +90,14 @@
                 · HEMIS: {{ row.reader.hemis_id }}{% endif %}</div>
             </td>
             <td class="small">{{ row.reader.get_reader_type_display }}</td>
+            <td class="small">
+              {% if row.level %}
+                <span style="display:inline-flex;align-items:center;gap:6px">
+                  <span style="width:9px;height:9px;border-radius:50%;background:{{ row.level.color }}"></span>
+                  {{ row.level.name }}
+                </span>
+              {% endif %}
+            </td>
             <td class="text-center">
               <span class="badge {% if row.total > 0 %}badge-green{% elif row.total < 0 %}badge-red{% else %}badge-gray{% endif %}">
                 {{ row.total }}</span>
@@ -98,7 +106,7 @@
                    class="btn btn-light btn-sm">Tarix</a></td>
           </tr>
         {% empty %}
-          <tr><td colspan="5">
+          <tr><td colspan="6">
             <div class="empty"><span class="big">🏅</span>
               Hali faollik yozuvlari yo'q.
               {% if is_admin_role %}«Qayta hisoblash» tugmasini bosing —

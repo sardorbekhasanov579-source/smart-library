@@ -72,3 +72,19 @@ def getitem(mapping, key):
         return mapping.get(key)
     except AttributeError:
         return None
+
+
+@register.filter
+def pretty_phone(value):
+    """Telefon raqamni o'qishga qulay ko'rinishga keltiradi.
+
+    998901234567 -> +998 90 123 45 67
+    """
+    from apps.quizzes.utils import pretty_phone as _pretty
+
+    if not value:
+        return ""
+    try:
+        return _pretty(value)
+    except Exception:
+        return value

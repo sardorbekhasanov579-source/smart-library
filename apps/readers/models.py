@@ -3,6 +3,7 @@ from django.conf import settings
 from django.db import models
 from django.urls import reverse
 from django.utils import timezone
+from django.utils.functional import cached_property
 
 
 class ReaderType(models.TextChoices):
@@ -87,12 +88,43 @@ class Reader(models.Model):
     def overdue_loans_count(self):
         return self.active_loans.filter(due_date__lt=timezone.localdate()).count()
 
+    # -- daraja va imtiyozlar ------------------------------------------------
+    @cached_property
+    def level(self):
+        """Faollik ballari asosidagi daraja (apps.activity.levels).
+
+        Natija: {level, next, points, remaining, percent}
+        """
+        try:
+            from apps.activity.levels import level_for_reader
+        except ImportError:  # faollik moduli o'chirilgan bo'lsa
+            return None
+        return level_for_reader(self)
+
     @property
-    def can_borrow(self):
+    def book_limit(self):
+        """Shu kitobxon bir vaqtda ola oladigan kitoblar soni (daraja bilan)."""
         from apps.core.models import SystemSetting
 
+        base = SystemSetting.max_books_per_reader()
+        if not self.level:
+            return base
+        return base + self.level["level"].get("bonus_books", 0)
+
+    @property
+    def loan_days(self):
+        """Shu kitobxon uchun kitob berish muddati (daraja bilan)."""
+        from apps.core.models import SystemSetting
+
+        base = SystemSetting.loan_days()
+        if not self.level:
+            return base
+        return base + self.level["level"].get("bonus_days", 0)
+
+    @property
+    def can_borrow(self):
         if self.status != ReaderStatus.ACTIVE:
             return False
         if self.overdue_loans_count > 0:
             return False
-        return self.active_loans_count < SystemSetting.max_books_per_reader()
+        return self.active_loans_count < self.book_limit

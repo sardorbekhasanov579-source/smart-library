@@ -9,6 +9,7 @@ Ikki qism bor:
 import logging
 
 from django.contrib import messages
+from django.core.paginator import Paginator
 from django.db.models import Count, Q
 from django.http import Http404, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
@@ -16,7 +17,7 @@ from django.urls import reverse
 from django.utils import timezone
 from django.views.generic import DetailView, ListView, TemplateView, View
 
-from apps.books.models import Book
+from apps.books.models import Book, BookCopy
 from apps.core.mixins import AdminRequiredMixin, LibrarianRequiredMixin
 from apps.core.models import SystemSetting
 from apps.quizzes import ai, telegram
@@ -714,12 +715,27 @@ class ReaderLoginView(View):
         return redirect("quizzes:login")
 
 
-class ReaderPortalView(View):
-    """Kitobxon kabineti: qo'lidagi kitoblar va testlar."""
+# ---------------------------------------------------------------------------
+# Kitobxon ilovasi — 4 bo'lim:
+#   1) Mening sahifam   2) Kitoblar bazasi   3) Testlarim   4) Sozlamalar
+# ---------------------------------------------------------------------------
+FINISHED_STATUSES = (
+    AssignmentStatus.PASSED,
+    AssignmentStatus.FAILED,
+    AssignmentStatus.EXPIRED,
+)
 
-    template_name = "quizzes/portal.html"
 
-    def get(self, request):
+class ReaderPageMixin:
+    """Sessiyadagi kitobxonni aniqlaydi va umumiy kontekstni beradi.
+
+    Kitobxon telefon + Telegram kodi bilan kiradi, shuning uchun Django
+    `login_required` emas, sessiyadagi `SESSION_KEY` ishlatiladi.
+    """
+
+    tab = ""
+
+    def dispatch(self, request, *args, **kwargs):
         reader_id = request.session.get(SESSION_KEY)
         if not reader_id:
             return redirect("quizzes:login")
@@ -727,26 +743,287 @@ class ReaderPortalView(View):
         if not reader:
             request.session.pop(SESSION_KEY, None)
             return redirect("quizzes:login")
+        self.reader = reader
+        return super().dispatch(request, *args, **kwargs)
 
-        loans = (
-            reader.loans.select_related("copy__book__author")
+    def telegram_account(self):
+        return TelegramAccount.objects.filter(reader=self.reader).first()
+
+    def open_quiz_count(self):
+        return (
+            self.reader.quiz_assignments.exclude(status__in=FINISHED_STATUSES).count()
+        )
+
+    def page_context(self, **extra):
+        context = {
+            "reader": self.reader,
+            "tab": self.tab,
+            "today": timezone.localdate(),
+            "open_quiz_count": self.open_quiz_count(),
+        }
+        context.update(extra)
+        return context
+
+
+class ReaderPortalView(ReaderPageMixin, View):
+    """1-bo'lim: kitobxon haqida ma'lumot va qo'lidagi kitoblar."""
+
+    template_name = "quizzes/portal.html"
+    tab = "home"
+
+    def get(self, request):
+        reader = self.reader
+
+        loans = list(
+            reader.loans.select_related("copy__book__author", "copy__book__category")
             .filter(return_date__isnull=True)
             .order_by("due_date")
         )
-        assignments = (
-            reader.quiz_assignments.select_related("quiz__book__author")
-            .order_by("-created_at")[:30]
+        returned_count = reader.loans.filter(return_date__isnull=False).count()
+        overdue_count = sum(1 for loan in loans if loan.is_overdue)
+        self._mark_deadlines(loans)
+
+        assignments = list(
+            reader.quiz_assignments.select_related("quiz__book__author").order_by(
+                "-created_at"
+            )[:6]
         )
+        open_assignments = [a for a in assignments if not a.is_finished]
+        passed_count = reader.quiz_assignments.filter(
+            status=AssignmentStatus.PASSED
+        ).count()
+
+        # Ijtimoiy faollik balli va reytingdagi o'rni (ikki so'rov)
+        points, rank = self._activity(reader)
+
         return render(
             request,
             self.template_name,
-            {
-                "reader": reader,
-                "loans": loans,
-                "assignments": assignments,
-                "open_assignments": [a for a in assignments if not a.is_finished],
-                "today": timezone.localdate(),
-            },
+            self.page_context(
+                loans=loans,
+                loans_count=len(loans),
+                returned_count=returned_count,
+                overdue_count=overdue_count,
+                passed_count=passed_count,
+                open_assignments=open_assignments,
+                telegram=self.telegram_account(),
+                points=points,
+                rank=rank,
+                level=reader.level,
+                max_books=reader.book_limit,
+            ),
+        )
+
+    @staticmethod
+    def _mark_deadlines(loans):
+        """Har bir kitob uchun muddat chizig'i va rangini hisoblaydi."""
+        today = timezone.localdate()
+        for loan in loans:
+            total = (loan.due_date - loan.issue_date).days or 1
+            left = (loan.due_date - today).days
+            passed = max(total - max(left, 0), 0)
+            loan.bar_percent = min(100, max(4, round(passed * 100 / total)))
+            loan.days_remaining = left
+            if left < 0:
+                loan.bar_state = "bad"
+                loan.deadline_text = f"{abs(left)} kun kechikdi"
+            elif left == 0:
+                loan.bar_state = "warn"
+                loan.deadline_text = "Bugun qaytarish kerak"
+            elif left <= 2:
+                loan.bar_state = "warn"
+                loan.deadline_text = f"{left} kun qoldi"
+            else:
+                loan.bar_state = ""
+                loan.deadline_text = f"{left} kun qoldi"
+            loan.shelf = loan.copy.shelf_location or loan.copy.book.shelf_location
+
+    @staticmethod
+    def _activity(reader):
+        """Kitobxonning umumiy balli va reytingdagi o'rni."""
+        try:
+            from django.db.models import Sum
+
+            from apps.activity.models import ActivityRecord
+        except ImportError:  # faollik moduli o'chirilgan bo'lsa
+            return None, None
+
+        points = reader.activity_records.aggregate(s=Sum("points"))["s"]
+        if points is None:
+            return None, None
+        better = (
+            ActivityRecord.objects.values("reader_id")
+            .annotate(total=Sum("points"))
+            .filter(total__gt=points)
+            .count()
+        )
+        return points, better + 1
+
+
+class ReaderBooksView(ReaderPageMixin, View):
+    """2-bo'lim: kutubxona fondini qidirish va kitob qayerda turganini ko'rish."""
+
+    template_name = "quizzes/reader_books.html"
+    tab = "books"
+    per_page = 15
+
+    def get(self, request):
+        query = (request.GET.get("q") or "").strip()
+        only = (request.GET.get("holat") or "").strip()  # "" | "mavjud"
+
+        books = Book.objects.select_related("author", "category")
+        if query:
+            books = books.filter(
+                Q(title__icontains=query)
+                | Q(author__full_name__icontains=query)
+                | Q(category__name__icontains=query)
+                | Q(isbn__icontains=query)
+                | Q(publisher__icontains=query)
+                | Q(copies__inventory_number__icontains=query)
+            ).distinct()
+        if only == "mavjud":
+            books = books.filter(available_quantity__gt=0)
+        books = books.order_by("title")
+
+        # Qidiruv bo'lmasa butun fondni emas, faqat yangi qo'shilganlarini
+        if not query and not only:
+            books = Book.objects.select_related("author", "category").order_by(
+                "-created_at"
+            )
+
+        paginator = Paginator(books, self.per_page)
+        page = paginator.get_page(request.GET.get("sahifa"))
+
+        # Har bir kitobning nusxalari — javon manzili bilan
+        copies_by_book = {}
+        if page.object_list:
+            copies = (
+                BookCopy.objects.filter(book__in=list(page.object_list))
+                .order_by("inventory_number")
+            )
+            for copy in copies:
+                copies_by_book.setdefault(copy.book_id, []).append(copy)
+
+        return render(
+            request,
+            self.template_name,
+            self.page_context(
+                query=query,
+                only=only,
+                page=page,
+                total=paginator.count,
+                copies_by_book=copies_by_book,
+                is_search=bool(query or only),
+                fond_total=Book.objects.count(),
+            ),
+        )
+
+
+class ReaderQuizzesView(ReaderPageMixin, View):
+    """3-bo'lim: kitobxonga biriktirilgan testlar."""
+
+    template_name = "quizzes/reader_quizzes.html"
+    tab = "quizzes"
+
+    def get(self, request):
+        shown = (request.GET.get("holat") or "faol").strip()
+
+        all_assignments = list(
+            self.reader.quiz_assignments.select_related(
+                "quiz__book__author"
+            ).order_by("-created_at")
+        )
+        open_list = [a for a in all_assignments if not a.is_finished]
+        done_list = [a for a in all_assignments if a.is_finished]
+
+        if shown == "yakunlangan":
+            items = done_list
+        elif shown == "hammasi":
+            items = all_assignments
+        else:
+            shown = "faol"
+            items = open_list
+
+        passed = [a for a in done_list if a.status == AssignmentStatus.PASSED]
+        best = max((a.best_percent for a in done_list), default=0)
+
+        return render(
+            request,
+            self.template_name,
+            self.page_context(
+                items=items,
+                shown=shown,
+                open_count=len(open_list),
+                done_count=len(done_list),
+                all_count=len(all_assignments),
+                passed_count=len(passed),
+                best_percent=best,
+                now=timezone.now(),
+                quiz_pass_percent=SystemSetting.quiz_pass_percent(),
+            ),
+        )
+
+
+class ReaderSettingsView(ReaderPageMixin, View):
+    """4-bo'lim: sozlamalar — Telegram, bildirishnomalar, ko'rinish, yordam."""
+
+    template_name = "quizzes/reader_settings.html"
+    tab = "settings"
+
+    def get(self, request):
+        return render(request, self.template_name, self._context())
+
+    def post(self, request):
+        action = request.POST.get("amal")
+        account = self.telegram_account()
+
+        if action == "bildirishnoma":
+            if not account:
+                messages.error(request, "Telegram hisobi ulanmagan.")
+            else:
+                account.notifications_enabled = request.POST.get("yoq") == "1"
+                account.save(update_fields=["notifications_enabled"])
+                messages.success(
+                    request,
+                    "Bildirishnomalar yoqildi."
+                    if account.notifications_enabled
+                    else "Bildirishnomalar o'chirildi.",
+                )
+        elif action == "telegram_uzish":
+            if account:
+                account.delete()
+                messages.success(
+                    request,
+                    "Telegram hisobi ajratildi. Qayta ulash uchun botga /start "
+                    "yuboring.",
+                )
+            else:
+                messages.info(request, "Ulangan Telegram hisobi yo'q edi.")
+        else:
+            messages.error(request, "Noma'lum amal.")
+
+        return redirect("quizzes:reader_settings")
+
+    def _context(self):
+        account = self.telegram_account()
+        try:
+            from apps.activity.levels import level_table
+
+            levels = level_table()
+        except ImportError:
+            levels = []
+        return self.page_context(
+            telegram=account,
+            level=self.reader.level,
+            levels=levels,
+            bot_link=telegram.bot_link(),
+            bot_username=telegram.bot_username(),
+            library_phone=SystemSetting.get("library_phone", ""),
+            library_hours=SystemSetting.get("library_hours", ""),
+            library_name=SystemSetting.library_name(),
+            quiz_pass_percent=SystemSetting.quiz_pass_percent(),
+            loan_days=self.reader.loan_days,
+            max_books=self.reader.book_limit,
         )
 
 

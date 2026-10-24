@@ -28,7 +28,15 @@ urlpatterns = [
     # --- Kitobxon -------------------------------------------------------------
     path("kirish/", views.ReaderLoginView.as_view(), name="login"),
     path("chiqish/", views.ReaderLogoutView.as_view(), name="logout"),
+    # Kitobxon ilovasining 4 bo'limi
     path("kabinet/", views.ReaderPortalView.as_view(), name="portal"),
+    path("kabinet/kitoblar/", views.ReaderBooksView.as_view(), name="reader_books"),
+    path("kabinet/testlar/", views.ReaderQuizzesView.as_view(), name="reader_quizzes"),
+    path(
+        "kabinet/sozlamalar/",
+        views.ReaderSettingsView.as_view(),
+        name="reader_settings",
+    ),
     path("t/<str:token>/", views.TakeQuizView.as_view(), name="take"),
     path("t/<str:token>/natija/", views.QuizResultView.as_view(), name="result"),
 

@@ -1,0 +1,338 @@
+{% extends "quizzes/reader_base.html" %}
+{% load library_extras %}
+
+{% block title %}Sozlamalar — {{ LIBRARY_NAME|default:"Kutubxona" }}{% endblock %}
+{% block page_name %}Sozlamalar{% endblock %}
+
+{% block content %}
+
+{# ------------------------------------------------------------------ Hisobim #}
+<div class="section-title"><span>Hisobim</span><span class="line"></span></div>
+
+<div class="card tight">
+  <div class="row" style="padding:0">
+    <div class="ico">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <circle cx="12" cy="8.5" r="3.7"/><path d="M4.5 20c1.3-3.4 4.1-5 7.5-5s6.2 1.6 7.5 5"/>
+      </svg>
+    </div>
+    <div class="body">
+      <div class="t">{{ reader.full_name }}</div>
+      <div class="d">
+        {{ reader.reader_code }}
+        {% if reader.phone %} · {{ reader.phone|pretty_phone }}{% endif %}
+      </div>
+    </div>
+  </div>
+  <p class="tiny muted mt">
+    Ism, telefon yoki HEMIS ID ni o'zgartirish kerak bo'lsa kutubxonachiga ayting —
+    bu ma'lumotlar kutubxona bazasidan olinadi.
+  </p>
+</div>
+
+{# ----------------------------------------------------------------- Darajam #}
+{% if level %}
+  <div class="section-title" id="darajalar"><span>Mening darajam</span><span class="line"></span></div>
+
+  <div class="card">
+    <div class="level-top">
+      <span class="level-badge" style="background:{{ level.level.color }}">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M8.5 14.5L5 3.5l4.2 2.6L12 2.5l2.8 3.6L19 3.5l-3.5 11z"/>
+          <path d="M8.5 18.5h7"/><path d="M8.5 21.5h7"/>
+        </svg>
+        {{ level.level.name }}
+      </span>
+      <span class="spacer"></span>
+      <span class="small muted">{{ level.points }} ball</span>
+    </div>
+
+    {% if level.next %}
+      <div class="level-bar"><span style="width:{{ level.percent }}%;background:{{ level.next.color }}"></span></div>
+      <p class="small muted mt-sm">«{{ level.next.name }}» gacha {{ level.remaining }} ball qoldi.</p>
+    {% endif %}
+
+    <div class="section-title" style="margin:15px 2px 8px">
+      <span>Darajalar jadvali</span><span class="line"></span>
+    </div>
+
+    <ul class="level-list">
+      {% for row in levels %}
+        <li class="{% if row.slug == level.level.slug %}on{% endif %}">
+          <span class="dot" style="background:{{ row.color }}"></span>
+          <div class="body">
+            <div class="t">{{ row.name }}</div>
+            <div class="d">
+              {{ row.min_points }} balldan
+              {% if row.bonus_books or row.bonus_days %}
+                · +{{ row.bonus_books }} kitob · +{{ row.bonus_days }} kun
+              {% else %}
+                · standart imtiyoz
+              {% endif %}
+            </div>
+          </div>
+          {% if row.slug == level.level.slug %}<span class="chip ok">siz</span>{% endif %}
+        </li>
+      {% endfor %}
+    </ul>
+
+    <p class="tiny muted mt-sm">
+      Ball kitob o'qish va testlardan yig'iladi: kitob olish +1, muddatida qaytarish +3,
+      testdan o'tish +10. Kechikish ball kamaytiradi.
+    </p>
+  </div>
+{% endif %}
+
+{# ----------------------------------------------------------------- Telegram #}
+<div class="section-title"><span>Telegram</span><span class="line"></span></div>
+
+<div class="rows">
+  {% if telegram %}
+    <div class="row">
+      <div class="ico green">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M20 6.5L9.5 17.5l-5-5"/>
+        </svg>
+      </div>
+      <div class="body">
+        <div class="t">Ulangan</div>
+        <div class="d">
+          {% if telegram.username %}@{{ telegram.username }}{% else %}{{ telegram.first_name|default:"Telegram hisobi" }}{% endif %}
+          · {{ telegram.created_at|date:"d.m.Y" }} dan beri
+        </div>
+      </div>
+    </div>
+
+    <form method="post" action="{% url 'quizzes:reader_settings' %}">
+      {% csrf_token %}
+      <input type="hidden" name="amal" value="bildirishnoma">
+      <input type="hidden" name="yoq" value="{% if telegram.notifications_enabled %}0{% else %}1{% endif %}">
+      <div class="row">
+        <div class="ico">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M18 9a6 6 0 10-12 0c0 5-2 6.5-2 6.5h16S18 14 18 9z"/>
+            <path d="M10.3 19a2 2 0 003.4 0"/>
+          </svg>
+        </div>
+        <div class="body">
+          <div class="t">Bildirishnomalar</div>
+          <div class="d">Yangi test va qaytarish muddati haqida xabar kelsin</div>
+        </div>
+        <label class="switch">
+          <input type="checkbox" onchange="this.form.submit()"
+                 {% if telegram.notifications_enabled %}checked{% endif %}
+                 aria-label="Bildirishnomalarni yoqish yoki o'chirish">
+          <span class="track"></span>
+        </label>
+      </div>
+    </form>
+
+    <form method="post" action="{% url 'quizzes:reader_settings' %}"
+          onsubmit="return confirm('Telegram hisobi ajratiladi. Testlar Telegramga kelmay qo’yadi. Davom etamizmi?')">
+      {% csrf_token %}
+      <input type="hidden" name="amal" value="telegram_uzish">
+      <button class="row" type="submit">
+        <div class="ico red">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M18.5 5.5l-13 13"/><path d="M5.5 5.5l13 13"/>
+          </svg>
+        </div>
+        <div class="body">
+          <div class="t" style="color:var(--red)">Hisobni ajratish</div>
+          <div class="d">Keyin botga /start yuborib qaytadan ulashingiz mumkin</div>
+        </div>
+      </button>
+    </form>
+  {% else %}
+    <div class="row">
+      <div class="ico amber">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" aria-hidden="true">
+          <circle cx="12" cy="12" r="9"/><path d="M12 7.5v5"/><path d="M12 16.2v.3"/>
+        </svg>
+      </div>
+      <div class="body">
+        <div class="t">Ulanmagan</div>
+        <div class="d">Testlar va eslatmalar Telegram orqali keladi — ulab qo'yish tavsiya etiladi</div>
+      </div>
+    </div>
+    {% if bot_link %}
+      <a class="row" href="{{ bot_link }}" target="_blank" rel="noopener">
+        <div class="ico">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M21 4.5L2.8 11.3c-.6.2-.6.9 0 1.1l4.4 1.4 1.7 5.3c.2.6 1 .7 1.3.2l2.3-3 4.6 3.4c.5.4 1.2.1 1.3-.5L21.9 5.3c.1-.6-.4-1-.9-.8z"/>
+          </svg>
+        </div>
+        <div class="body">
+          <div class="t">Botni ochish</div>
+          <div class="d">{% if bot_username %}@{{ bot_username }}{% else %}Telegramda ochiladi{% endif %} → /start → «Raqamimni yuborish»</div>
+        </div>
+        <span class="arrow">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M9 5l7 7-7 7"/>
+          </svg>
+        </span>
+      </a>
+    {% endif %}
+  {% endif %}
+</div>
+
+{# ---------------------------------------------------------------- Ko'rinish #}
+<div class="section-title"><span>Ko'rinish</span><span class="line"></span></div>
+
+<div class="card">
+  <label class="field-label">Mavzu</label>
+  <div class="choice" id="theme-choice">
+    <label>
+      <input type="radio" name="theme" value="system">
+      <span class="box">Tizim bo'yicha</span>
+    </label>
+    <label>
+      <input type="radio" name="theme" value="light">
+      <span class="box">Yorqin</span>
+    </label>
+    <label>
+      <input type="radio" name="theme" value="dark">
+      <span class="box">Tungi</span>
+    </label>
+  </div>
+
+  <label class="field-label mt">Matn kattaligi</label>
+  <div class="choice" id="fontsize-choice">
+    <label>
+      <input type="radio" name="fontsize" value="normal">
+      <span class="box">Oddiy</span>
+    </label>
+    <label>
+      <input type="radio" name="fontsize" value="large">
+      <span class="box">Kattaroq</span>
+    </label>
+  </div>
+
+  <p class="tiny muted mt-sm">Bu sozlamalar faqat shu telefonda saqlanadi.</p>
+</div>
+
+{# -------------------------------------------------------------------- Ilova #}
+<div class="section-title"><span>Ilova</span><span class="line"></span></div>
+
+<div class="rows">
+  <button class="row" type="button" data-install-row data-install-btn hidden>
+    <div class="ico">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M12 4v10"/><path d="M8 10.5l4 4 4-4"/><path d="M5 19h14"/>
+      </svg>
+    </div>
+    <div class="body">
+      <div class="t">Ilovani o'rnatish</div>
+      <div class="d">Bosh ekranga qo'shiladi, brauzerdan tez ochiladi</div>
+    </div>
+  </button>
+
+  <div class="row">
+    <div class="ico plain">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M3 8.5a13 13 0 0118 0"/><path d="M6.5 12a8.5 8.5 0 0111 0"/>
+        <path d="M9.8 15.3a4 4 0 014.4 0"/><path d="M12 18.5v.2"/>
+      </svg>
+    </div>
+    <div class="body">
+      <div class="t">Internetsiz ishlash</div>
+      <div class="d">Ilova ochiladi, lekin kitoblar va testlar uchun internet kerak</div>
+    </div>
+  </div>
+</div>
+
+{# ---------------------------------------------------------------- Kutubxona #}
+<div class="section-title"><span>Kutubxona</span><span class="line"></span></div>
+
+<div class="rows">
+  <div class="row">
+    <div class="ico">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M4 5.5A1.5 1.5 0 015.5 4H10v16H5.5A1.5 1.5 0 014 18.5v-13z"/>
+        <path d="M20 5.5A1.5 1.5 0 0018.5 4H14v16h4.5A1.5 1.5 0 0020 18.5v-13z"/>
+      </svg>
+    </div>
+    <div class="body">
+      <div class="t">{{ library_name }}</div>
+      {% if library_hours %}<div class="d">{{ library_hours }}</div>{% endif %}
+    </div>
+  </div>
+
+  {% if library_phone %}
+    <a class="row" href="tel:{{ library_phone }}">
+      <div class="ico green">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M6.5 3.5h3l1.5 4-2 1.5a10 10 0 005 5l1.5-2 4 1.5v3a1.5 1.5 0 01-1.7 1.5A15.5 15.5 0 015 5.2 1.5 1.5 0 016.5 3.5z"/>
+        </svg>
+      </div>
+      <div class="body">
+        <div class="t">Kutubxonaga qo'ng'iroq</div>
+        <div class="d">{{ library_phone }}</div>
+      </div>
+      <span class="arrow">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M9 5l7 7-7 7"/>
+        </svg>
+      </span>
+    </a>
+  {% endif %}
+
+  <div class="row">
+    <div class="ico plain">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <circle cx="12" cy="12" r="9"/><path d="M12 11v5.5"/><path d="M12 7.8v.3"/>
+      </svg>
+    </div>
+    <div class="body">
+      <div class="t">Qoidalar</div>
+      <div class="d">
+        Kitob {{ loan_days }} kunga beriladi · bir vaqtda {{ max_books }} tagacha kitob ·
+        test {{ quiz_pass_percent }}% dan yuqori bo'lsa «o'qilgan» hisoblanadi
+      </div>
+    </div>
+  </div>
+</div>
+
+{# -------------------------------------------------------------------- Chiqish #}
+<form method="post" action="{% url 'quizzes:logout' %}" class="mt">
+  {% csrf_token %}
+  <button class="btn btn-danger btn-block" type="submit">Hisobdan chiqish</button>
+</form>
+
+<div class="foot">{{ library_name }} · kitobxon ilovasi v1.1</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function () {
+  function apply(key, attr, value, defaultValue) {
+    try {
+      if (value === defaultValue) {
+        localStorage.removeItem(key);
+        document.documentElement.removeAttribute(attr);
+      } else {
+        localStorage.setItem(key, value);
+        document.documentElement.setAttribute(attr, value);
+      }
+    } catch (e) {}
+  }
+
+  function setup(containerId, name, key, attr, defaultValue) {
+    var box = document.getElementById(containerId);
+    if (!box) return;
+    var saved = defaultValue;
+    try { saved = localStorage.getItem(key) || defaultValue; } catch (e) {}
+    box.querySelectorAll('input[name="' + name + '"]').forEach(function (input) {
+      input.checked = input.value === saved;
+      input.addEventListener("change", function () {
+        if (input.checked) apply(key, attr, input.value, defaultValue);
+      });
+    });
+  }
+
+  setup("theme-choice", "theme", "app_theme", "data-theme", "system");
+  setup("fontsize-choice", "fontsize", "app_fontsize", "data-fontsize", "normal");
+})();
+</script>
+{% endblock %}

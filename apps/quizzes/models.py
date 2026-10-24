@@ -401,6 +401,12 @@ class TelegramAccount(models.Model):
     first_name = models.CharField("Ism", max_length=100, blank=True)
     phone = models.CharField("Telefon", max_length=32, blank=True)
     is_verified = models.BooleanField("Tasdiqlangan", default=False)
+    notifications_enabled = models.BooleanField(
+        "Bildirishnomalar yoqilgan",
+        default=True,
+        help_text="O'chirilsa, test va eslatma xabarlari Telegramga yuborilmaydi "
+        "(kirish kodi baribir yuboriladi).",
+    )
     created_at = models.DateTimeField("Ulangan", default=timezone.now)
     last_seen = models.DateTimeField("Oxirgi aloqa", null=True, blank=True)
 

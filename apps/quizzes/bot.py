@@ -14,6 +14,19 @@ from apps.quizzes.utils import pretty_phone
 
 logger = logging.getLogger(__name__)
 
+
+def cabinet_link():
+    """Kitobxon ilovasining (kabinet) to'liq manzili."""
+    from django.urls import reverse
+
+    from apps.core.models import SystemSetting
+
+    base = (SystemSetting.get("site_base_url", "") or "").strip().rstrip("/")
+    if not base:
+        return ""
+    return f"{base}{reverse('quizzes:portal')}"
+
+
 HELP_TEXT = (
     "ℹ️ <b>Yordam</b>\n\n"
     "/start — ro'yxatdan o'tish (telefon raqamni tasdiqlash)\n"
@@ -108,12 +121,19 @@ def handle_contact(chat_id, contact, user):
         first_name=(user or {}).get("first_name", ""),
         phone=phone,
     )
+    link = cabinet_link()
     telegram.safe_send(
         chat_id,
         f"✅ Hisobingiz ulandi!\n\n"
         f"👤 <b>{reader.full_name}</b>\n"
         f"🆔 {reader.reader_code}\n\n"
         "Endi kitob qaytarish muddati yaqinlashganda sizga test keladi.\n\n"
+        + (
+            f"📱 <b>Shaxsiy kabinet:</b>\n{link}\n"
+            "Kitoblaringiz, kutubxona fondi va testlar shu yerda.\n\n"
+            if link
+            else ""
+        )
         + HELP_TEXT,
         reply_markup=telegram.main_menu_keyboard(),
     )
@@ -184,4 +204,7 @@ def handle_my_books(chat_id):
             f"  {loan.copy.book.author.full_name}\n"
             f"  Muddat: {loan.due_date:%d.%m.%Y} — {mark}\n"
         )
+    link = cabinet_link()
+    if link:
+        lines.append(f"📱 Kabinet: {link}")
     telegram.safe_send(chat_id, "\n".join(lines))

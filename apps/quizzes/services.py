@@ -65,6 +65,21 @@ def reader_chat_id(reader):
     return account.chat_id if account and account.is_verified else None
 
 
+def reader_notify_chat_id(reader):
+    """Bildirishnoma uchun chat ID.
+
+    Kitobxon ilovaning sozlamalaridan bildirishnomalarni o'chirib qo'ygan
+    bo'lsa None qaytaradi. Kirish kodi bunga bog'liq emas — u har holda
+    yuboriladi (`reader_chat_id`).
+    """
+    account = getattr(reader, "telegram", None)
+    if not account or not account.is_verified:
+        return None
+    if not account.notifications_enabled:
+        return None
+    return account.chat_id
+
+
 # ---------------------------------------------------------------------------
 # OTP (bir martalik kod)
 # ---------------------------------------------------------------------------
@@ -178,12 +193,22 @@ def save_questions(quiz, questions):
 # ---------------------------------------------------------------------------
 def send_assignment(assignment, base_url=None):
     """Kitobxonga test havolasini Telegram orqali yuboradi."""
-    chat_id = reader_chat_id(assignment.reader)
+    chat_id = reader_notify_chat_id(assignment.reader)
     link = assignment.absolute_link(base_url)
     if not chat_id:
-        assignment.delivery_note = "Telegram ulanmagan"
+        account = getattr(assignment.reader, "telegram", None)
+        if account and account.is_verified and not account.notifications_enabled:
+            note = "Kitobxon bildirishnomalarni o'chirgan"
+            reason = (
+                "Kitobxon ilovada bildirishnomalarni o'chirib qo'ygan. "
+                "Test kabinetdagi «Testlarim» bo'limida ko'rinadi."
+            )
+        else:
+            note = "Telegram ulanmagan"
+            reason = "Kitobxonning Telegram hisobi ulanmagan."
+        assignment.delivery_note = note
         assignment.save(update_fields=["delivery_note"])
-        return False, "Kitobxonning Telegram hisobi ulanmagan."
+        return False, reason
 
     book = assignment.book
     deadline = timezone.localtime(assignment.deadline) if assignment.deadline else None

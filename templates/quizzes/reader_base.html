@@ -1,0 +1,59 @@
+{% extends "quizzes/public_base.html" %}
+
+{# ===========================================================================
+   Kitobxon ilovasining asosiy qobig'i: yuqorida sahifa nomi,
+   pastda 4 ta bo'lim (tab). Har bir sahifa shuni meros qilib oladi va
+   `tab` o'zgaruvchisi orqali qaysi tab yonayotganini aytadi.
+   =========================================================================== #}
+
+{% block wrap_class %}{% endblock %}
+
+{% block top_left %}
+  <div>
+    <div class="page">{% block page_name %}Kabinet{% endblock %}</div>
+    <div class="sub">{{ LIBRARY_NAME|default:"Kutubxona" }}</div>
+  </div>
+{% endblock %}
+
+{% block install_bar %}{% endblock %}
+{% block foot %}{% endblock %}
+
+{% block tabbar %}
+<nav class="tabbar" aria-label="Bo'limlar">
+  <a href="{% url 'quizzes:portal' %}" class="{% if tab == 'home' %}active{% endif %}"
+     {% if tab == 'home' %}aria-current="page"{% endif %}>
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <path d="M12 3.5l8 6.2V20a1 1 0 01-1 1h-4v-6H9v6H5a1 1 0 01-1-1V9.7l8-6.2z"/>
+    </svg>
+    <span>Mening sahifam</span>
+  </a>
+
+  <a href="{% url 'quizzes:reader_books' %}" class="{% if tab == 'books' %}active{% endif %}"
+     {% if tab == 'books' %}aria-current="page"{% endif %}>
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <path d="M4 5.5A1.5 1.5 0 015.5 4H10v16H5.5A1.5 1.5 0 014 18.5v-13z"/>
+      <path d="M20 5.5A1.5 1.5 0 0018.5 4H14v16h4.5A1.5 1.5 0 0020 18.5v-13z"/>
+    </svg>
+    <span>Kitoblar</span>
+  </a>
+
+  <a href="{% url 'quizzes:reader_quizzes' %}" class="{% if tab == 'quizzes' %}active{% endif %}"
+     {% if tab == 'quizzes' %}aria-current="page"{% endif %}>
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <path d="M7 3.5h10a1.5 1.5 0 011.5 1.5v14a1.5 1.5 0 01-1.5 1.5H7A1.5 1.5 0 015.5 19V5A1.5 1.5 0 017 3.5z"/>
+      <path d="M9 9.5h6"/><path d="M9 13.5h6"/><path d="M9 17h3"/>
+    </svg>
+    <span>Testlarim</span>
+    {% if open_quiz_count %}<span class="count">{{ open_quiz_count }}</span>{% endif %}
+  </a>
+
+  <a href="{% url 'quizzes:reader_settings' %}" class="{% if tab == 'settings' %}active{% endif %}"
+     {% if tab == 'settings' %}aria-current="page"{% endif %}>
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <circle cx="12" cy="12" r="3.2"/>
+      <path d="M19.4 14.5a1.6 1.6 0 00.33 1.77l.06.06a1.9 1.9 0 11-2.7 2.7l-.05-.06a1.6 1.6 0 00-1.78-.33 1.6 1.6 0 00-.97 1.47v.17a1.9 1.9 0 11-3.8 0v-.09a1.6 1.6 0 00-1.05-1.46 1.6 1.6 0 00-1.77.33l-.06.06a1.9 1.9 0 11-2.7-2.7l.06-.06a1.6 1.6 0 00.33-1.78 1.6 1.6 0 00-1.47-.97H4.1a1.9 1.9 0 110-3.8h.09A1.6 1.6 0 005.65 8.6a1.6 1.6 0 00-.33-1.77l-.06-.06a1.9 1.9 0 112.7-2.7l.06.06a1.6 1.6 0 001.77.33h.08A1.6 1.6 0 0010.9 3V2.9a1.9 1.9 0 113.8 0V3a1.6 1.6 0 00.97 1.46 1.6 1.6 0 001.78-.33l.06-.06a1.9 1.9 0 112.68 2.7l-.06.06a1.6 1.6 0 00-.33 1.77v.08a1.6 1.6 0 001.47.97h.17a1.9 1.9 0 110 3.8h-.09a1.6 1.6 0 00-1.46.97z"/>
+    </svg>
+    <span>Sozlamalar</span>
+  </a>
+</nav>
+{% endblock %}

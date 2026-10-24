@@ -1,0 +1,137 @@
+{% extends "quizzes/reader_base.html" %}
+
+{% block title %}Testlarim — {{ LIBRARY_NAME|default:"Kutubxona" }}{% endblock %}
+{% block page_name %}Testlarim{% endblock %}
+
+{% block content %}
+
+<section class="hero">
+  <div class="facts">
+    <div>
+      <div class="v">{{ open_count }}</div>
+      <div class="k">Ishlanmagan test</div>
+    </div>
+    <div>
+      <div class="v">{{ passed_count }}</div>
+      <div class="k">Topshirilgan</div>
+    </div>
+    <div>
+      <div class="v">{% if best_percent %}{{ best_percent }}%{% else %}—{% endif %}</div>
+      <div class="k">Eng yaxshi natija</div>
+    </div>
+  </div>
+</section>
+
+<div class="seg">
+  <a href="?holat=faol" class="{% if shown == 'faol' %}on{% endif %}">
+    Faol <span class="n">{{ open_count }}</span>
+  </a>
+  <a href="?holat=yakunlangan" class="{% if shown == 'yakunlangan' %}on{% endif %}">
+    Yakunlangan <span class="n">{{ done_count }}</span>
+  </a>
+  <a href="?holat=hammasi" class="{% if shown == 'hammasi' %}on{% endif %}">
+    Hammasi <span class="n">{{ all_count }}</span>
+  </a>
+</div>
+
+{% if items %}
+  {% for a in items %}
+    <div class="card">
+      <div class="book-head">
+        <div class="cov" style="width:44px;height:58px;flex:none;border-radius:7px;background:var(--blue-soft);display:grid;place-items:center;color:var(--blue-ink);overflow:hidden">
+          {% if a.book.cover %}
+            <img src="{{ a.book.cover.url }}" alt="" style="width:100%;height:100%;object-fit:cover">
+          {% else %}
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M5 4.5h9.5a2 2 0 012 2v13H7a2 2 0 01-2-2v-13z"/><path d="M5 17.5h11.5"/>
+            </svg>
+          {% endif %}
+        </div>
+        <div style="flex:1;min-width:0">
+          <div class="title">{{ a.book.title|default:"Kitob" }}</div>
+          <div class="small muted">{{ a.book.author.full_name|default:"" }}</div>
+        </div>
+      </div>
+
+      <div class="meta-row">
+        {% if a.status == 'passed' %}
+          <span class="chip ok">O'tdi — {{ a.best_percent }}%</span>
+        {% elif a.status == 'failed' %}
+          <span class="chip bad">O'tmadi — {{ a.best_percent }}%</span>
+        {% elif a.status == 'expired' %}
+          <span class="chip plain">Muddati o'tdi</span>
+        {% elif a.status == 'started' %}
+          <span class="chip warn">Boshlangan</span>
+        {% elif a.status == 'sent' %}
+          <span class="chip">Yuborilgan</span>
+        {% else %}
+          <span class="chip plain">Hali yuborilmagan</span>
+        {% endif %}
+
+        <span class="chip plain">{{ a.question_count }} savol</span>
+        <span class="chip plain">O'tish chegarasi {{ a.pass_percent }}%</span>
+      </div>
+
+      {% if a.deadline and not a.is_finished %}
+        <div class="due {% if a.days_left < 1 %}bad{% elif a.days_left < 3 %}warn{% endif %}" style="margin-top:11px">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" aria-hidden="true" style="flex:none;color:currentColor">
+            <circle cx="12" cy="12" r="9"/><path d="M12 7.5V12l3 2"/>
+          </svg>
+          <div class="txt" style="flex:1;text-align:left">
+            Muddat: {{ a.deadline|date:"d.m.Y, H:i" }}
+            {% if a.days_left > 0 %}· {{ a.days_left }} kun qoldi
+            {% elif a.days_left == 0 %}· bugun tugaydi
+            {% else %}· muddat o'tdi{% endif %}
+          </div>
+        </div>
+      {% endif %}
+
+      {% if a.can_attempt %}
+        <a class="btn btn-primary btn-block mt" href="{% url 'quizzes:take' a.token %}">
+          {% if a.status == 'started' %}Testni davom ettirish{% else %}Testni boshlash{% endif %}
+        </a>
+        <p class="tiny muted center mt-sm">
+          Ruxsat etilgan urinish: {{ a.max_attempts }} ta · ishlatilgan: {{ a.attempts_used }} ta
+        </p>
+      {% elif a.is_finished %}
+        <a class="btn btn-light btn-block mt" href="{% url 'quizzes:result' a.token %}">Natijani ko'rish</a>
+      {% else %}
+        <p class="small muted mt">Bu testni hozir ishlash mumkin emas.</p>
+      {% endif %}
+    </div>
+  {% endfor %}
+{% else %}
+  <div class="card">
+    <div class="empty">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M7 3.5h10A1.5 1.5 0 0118.5 5v14a1.5 1.5 0 01-1.5 1.5H7A1.5 1.5 0 015.5 19V5A1.5 1.5 0 017 3.5z"/>
+        <path d="M9 9.5h6"/><path d="M9 13.5h6"/><path d="M9 17h3"/>
+      </svg>
+      {% if shown == 'faol' %}
+        <div class="t">Ishlanmagan test yo'q</div>
+        <div class="d">Kitob qaytarish muddatiga bir kun qolganda test o'zi Telegramga keladi.</div>
+      {% elif shown == 'yakunlangan' %}
+        <div class="t">Hali yakunlangan test yo'q</div>
+        <div class="d">Birinchi testni ishlaganingizdan keyin natijalar shu yerda turadi.</div>
+      {% else %}
+        <div class="t">Sizga hali test biriktirilmagan</div>
+        <div class="d">Kitob olganingizdan keyin test avtomatik tayyorlanadi.</div>
+      {% endif %}
+    </div>
+  </div>
+{% endif %}
+
+<div class="notice info">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+    <circle cx="12" cy="12" r="9"/><path d="M12 11v5.5"/><path d="M12 7.8v.3"/>
+  </svg>
+  <div>
+    <div class="t">Test qanday ishlaydi</div>
+    <div class="d">
+      Savollar siz olgan kitob bo'yicha tuziladi. Natija {{ quiz_pass_percent|default:70 }}% dan
+      yuqori bo'lsa kitob «o'qilgan» deb belgilanadi va faollik balli qo'shiladi.
+    </div>
+  </div>
+</div>
+
+{% endblock %}

@@ -173,8 +173,14 @@ def leaderboard(date_from=None, date_to=None, reader_type=None, limit=None):
         {"reader": reader, "total": score_map.get(reader.pk, 0)} for reader in readers
     ]
     rows.sort(key=lambda r: (-r["total"], r["reader"].full_name))
+
+    # Daraja ballardan hisoblanadi — qo'shimcha so'rov kerak emas
+    from apps.activity.levels import level_for, level_table
+
+    table = level_table()
     for index, row in enumerate(rows, start=1):
         row["rank"] = index
+        row["level"] = level_for(row["total"], table)
     return rows[:limit] if limit else rows
 
 

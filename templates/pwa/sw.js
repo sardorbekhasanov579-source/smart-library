@@ -2,7 +2,9 @@
    Vazifasi: statik fayllarni keshlash va internet yo'qolganda ogohlantirish.
    Sahifalar HAR DOIM avval tarmoqdan olinadi — eski ma'lumot ko'rsatilmasligi uchun. */
 
-const CACHE = "kutubxona-v1";
+/* Kesh nomi o'zgartirilsa, eski keshlar butunlay tozalanadi.
+   Dizayn yoki statik fayllar jiddiy o'zgarganda raqamni oshiring: v2 -> v3. */
+const CACHE = "kutubxona-v2";
 
 const PRECACHE = [
   "{% static 'css/app.css' %}",
@@ -47,19 +49,24 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
-  // Statik fayllar: avval keshdan (tez), keyin tarmoqdan
+  // Statik fayllar: keshdagisi darhol beriladi (tez ochilsin), lekin shu bilan
+  // birga fonda tarmoqdan yangisi olinib, kesh yangilanadi. Shunday qilinmasa
+  // bir marta keshga tushgan CSS hech qachon yangilanmay qoladi.
   if (url.pathname.startsWith("/static/")) {
     event.respondWith(
-      caches.match(request).then((cached) => {
-        if (cached) return cached;
-        return fetch(request).then((response) => {
-          if (response && response.status === 200) {
-            const copy = response.clone();
-            caches.open(CACHE).then((cache) => cache.put(request, copy));
-          }
-          return response;
-        });
-      })
+      caches.open(CACHE).then((cache) =>
+        cache.match(request).then((cached) => {
+          const fresh = fetch(request)
+            .then((response) => {
+              if (response && response.status === 200) {
+                cache.put(request, response.clone());
+              }
+              return response;
+            })
+            .catch(() => cached);
+          return cached || fresh;
+        })
+      )
     );
     return;
   }

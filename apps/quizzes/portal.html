@@ -1,0 +1,202 @@
+{% extends "quizzes/reader_base.html" %}
+{% load library_extras %}
+
+{% block title %}Mening sahifam — {{ LIBRARY_NAME|default:"Kutubxona" }}{% endblock %}
+{% block page_name %}Mening sahifam{% endblock %}
+
+{% block content %}
+
+{# ------------------------------------------------- Kitobxon haqida ma'lumot #}
+<section class="hero">
+  <div class="who">
+    <div class="ava">{{ reader.full_name|initials }}</div>
+    <div style="min-width:0">
+      <div class="nm">{{ reader.full_name }}</div>
+      <div class="code">Kitobxon kodi: {{ reader.reader_code }}</div>
+    </div>
+  </div>
+
+  <div class="hr"></div>
+
+  <div class="facts">
+    <div>
+      <div class="v">{{ loans_count }}<span style="font-size:.7em;opacity:.6">/{{ max_books }}</span></div>
+      <div class="k">Qo'limdagi kitob</div>
+    </div>
+    <div>
+      <div class="v">{{ returned_count }}</div>
+      <div class="k">Qaytarilgan kitob</div>
+    </div>
+    <div>
+      <div class="v">{% if points is not None %}{{ points }}{% else %}—{% endif %}</div>
+      <div class="k">Faollik balli{% if rank %} · {{ rank }}-o'rin{% endif %}</div>
+    </div>
+  </div>
+
+  <div class="tags">
+    <span class="tag">{{ reader.get_reader_type_display }}</span>
+    <span class="tag">{{ reader.get_status_display }}</span>
+    {% if passed_count %}<span class="tag">{{ passed_count }} test topshirilgan</span>{% endif %}
+  </div>
+</section>
+
+{# ------------------------------------------------------------------ Daraja #}
+{% if level %}
+  <div class="card tight level-card">
+    <div class="level-top">
+      <span class="level-badge" style="background:{{ level.level.color }}">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M8.5 14.5L5 3.5l4.2 2.6L12 2.5l2.8 3.6L19 3.5l-3.5 11z"/>
+          <path d="M8.5 18.5h7"/><path d="M8.5 21.5h7"/>
+        </svg>
+        {{ level.level.name }}
+      </span>
+      <span class="spacer"></span>
+      <span class="small muted">{{ level.points }} ball</span>
+    </div>
+
+    {% if level.next %}
+      <div class="level-bar">
+        <span style="width:{{ level.percent }}%;background:{{ level.next.color }}"></span>
+      </div>
+      <div class="small muted mt-sm">
+        «{{ level.next.name }}» darajasiga <b>{{ level.remaining }} ball</b> qoldi.
+        Unda standart limitdan
+        <span class="nowrap">+{{ level.next.bonus_books }} kitob</span> va
+        <span class="nowrap">+{{ level.next.bonus_days }} kun</span> beriladi.
+      </div>
+    {% else %}
+      <div class="level-bar"><span style="width:100%;background:{{ level.level.color }}"></span></div>
+      <div class="small muted mt-sm">Eng yuqori darajadasiz — barcha imtiyozlar ochiq.</div>
+    {% endif %}
+
+    <div class="meta-row">
+      <span class="chip plain">Bir vaqtda {{ max_books }} ta kitob</span>
+      <span class="chip plain">{{ reader.loan_days }} kun muddat</span>
+      {% if rank %}<span class="chip">Reytingda {{ rank }}-o'rin</span>{% endif %}
+    </div>
+    <a class="small" href="{% url 'quizzes:reader_settings' %}#darajalar">Darajalar jadvalini ko'rish</a>
+  </div>
+{% endif %}
+
+{# ------------------------------------------------------------- Ogohlantirish #}
+{% if overdue_count %}
+  <div class="notice bad">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" aria-hidden="true">
+      <circle cx="12" cy="12" r="9"/><path d="M12 7.5v5"/><path d="M12 16.2v.3"/>
+    </svg>
+    <div>
+      <div class="t">Muddati o'tgan {{ overdue_count }} kitob bor</div>
+      <div class="d">Iltimos, imkon qadar tezroq kutubxonaga qaytaring — kechikish faollik ballidan ayiriladi.</div>
+    </div>
+  </div>
+{% endif %}
+
+{% if not telegram %}
+  <div class="notice">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <path d="M21 4.5L2.8 11.3c-.6.2-.6.9 0 1.1l4.4 1.4 1.7 5.3c.2.6 1 .7 1.3.2l2.3-3 4.6 3.4c.5.4 1.2.1 1.3-.5L21.9 5.3c.1-.6-.4-1-.9-.8z"/>
+    </svg>
+    <div>
+      <div class="t">Telegram ulanmagan</div>
+      <div class="d">Testlar va eslatmalar Telegramga keladi. Sozlamalar bo'limidan ulab qo'ying.</div>
+    </div>
+  </div>
+{% endif %}
+
+{# --------------------------------------------------------- Ochiq testlar #}
+{% if open_assignments %}
+  <div class="card tight">
+    <div class="row" style="padding:0">
+      <div class="ico amber">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M7 3.5h10A1.5 1.5 0 0118.5 5v14a1.5 1.5 0 01-1.5 1.5H7A1.5 1.5 0 015.5 19V5A1.5 1.5 0 017 3.5z"/>
+          <path d="M9 9.5h6"/><path d="M9 13.5h6"/>
+        </svg>
+      </div>
+      <div class="body">
+        <div class="t">Sizda {{ open_assignments|length }} ta ishlanmagan test bor</div>
+        <div class="d">Muddati o'tib ketmasin — hoziroq ishlab qo'ying.</div>
+      </div>
+    </div>
+    <a class="btn btn-primary btn-block mt" href="{% url 'quizzes:reader_quizzes' %}">Testlarga o'tish</a>
+  </div>
+{% endif %}
+
+{# ----------------------------------------------------- Qo'limdagi kitoblar #}
+<div class="section-title">
+  <span>Qo'limdagi kitoblar</span>
+  <span class="line"></span>
+  <span>{{ loans_count }} ta</span>
+</div>
+
+<div class="card">
+  {% if loans %}
+    {% for loan in loans %}
+      <div class="book-row">
+        <div class="cov">
+          {% if loan.copy.book.cover %}
+            <img src="{{ loan.copy.book.cover.url }}" alt="">
+          {% else %}
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M5 4.5h9.5a2 2 0 012 2v13H7a2 2 0 01-2-2v-13z"/><path d="M5 17.5h11.5"/>
+            </svg>
+          {% endif %}
+        </div>
+        <div class="body">
+          <div class="t">{{ loan.copy.book.title }}</div>
+          <div class="a">{{ loan.copy.book.author.full_name|default:"Muallif ko'rsatilmagan" }}</div>
+
+          <div class="due {{ loan.bar_state }}">
+            <div class="bar"><span style="width:{{ loan.bar_percent }}%"></span></div>
+            <div class="txt">{{ loan.deadline_text }}</div>
+          </div>
+
+          <div class="meta-row">
+            <span class="chip plain">{{ loan.due_date|date:"d.m.Y" }} gacha</span>
+            <span class="chip plain">Inv. {{ loan.copy.inventory_number }}</span>
+            {% if loan.shelf %}<span class="chip shelf">Javon: {{ loan.shelf }}</span>{% endif %}
+          </div>
+        </div>
+      </div>
+    {% endfor %}
+  {% else %}
+    <div class="empty">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M4 5.5A1.5 1.5 0 015.5 4H10v16H5.5A1.5 1.5 0 014 18.5v-13z"/>
+        <path d="M20 5.5A1.5 1.5 0 0018.5 4H14v16h4.5A1.5 1.5 0 0020 18.5v-13z"/>
+      </svg>
+      <div class="t">Hozir qo'lingizda kitob yo'q</div>
+      <div class="d">Kutubxona fondidan kerakli kitobni topib, kutubxonachiga ayting.</div>
+      <a class="btn btn-light mt" href="{% url 'quizzes:reader_books' %}">Kitob qidirish</a>
+    </div>
+  {% endif %}
+</div>
+
+{# -------------------------------------------------------- Shaxsiy ma'lumot #}
+<div class="section-title">
+  <span>Ma'lumotlarim</span>
+  <span class="line"></span>
+</div>
+
+<div class="card">
+  <ul class="facts-list">
+    <li><span class="k">F.I.Sh.</span><span class="v">{{ reader.full_name }}</span></li>
+    <li><span class="k">Kitobxon kodi</span><span class="v">{{ reader.reader_code }}</span></li>
+    {% if reader.hemis_id %}
+      <li><span class="k">HEMIS ID</span><span class="v">{{ reader.hemis_id }}</span></li>
+    {% endif %}
+    <li><span class="k">Turi</span><span class="v">{{ reader.get_reader_type_display }}</span></li>
+    <li><span class="k">Telefon</span><span class="v">{{ reader.phone|pretty_phone|default:"—" }}</span></li>
+    {% if reader.email %}
+      <li><span class="k">Email</span><span class="v">{{ reader.email }}</span></li>
+    {% endif %}
+    <li><span class="k">Ro'yxatga olingan</span><span class="v">{{ reader.registration_date|date:"d.m.Y" }}</span></li>
+  </ul>
+  <p class="small muted mt">
+    Ma'lumotda xatolik bo'lsa kutubxonachiga murojaat qiling — o'zgartirish faqat
+    kutubxonachi orqali amalga oshiriladi.
+  </p>
+</div>
+
+{% endblock %}
