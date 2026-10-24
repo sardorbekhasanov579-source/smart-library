@@ -1,0 +1,106 @@
+{% extends "base.html" %}
+{% block title %}Tahlil natijasi — {{ LIBRARY_NAME }}{% endblock %}
+{% block page_title %}Tahlil natijasi{% endblock %}
+
+{% block content %}
+<div class="card" style="max-width:920px">
+  <div class="card-head"><h2>{{ filename }}</h2></div>
+  <div class="card-body">
+
+    <div class="stat-grid">
+      <div class="stat">
+        <div class="icon i-blue">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 4.5h9l3 3V19a1 1 0 01-1 1H6a1 1 0 01-1-1V5.5a1 1 0 011-1z"/><path d="M9 9.5h6"/><path d="M9 13h6"/></svg>
+        </div>
+        <div><div class="value">{{ result.total }}</div><div class="label">Qator (kitob nomi)</div></div>
+      </div>
+      <div class="stat">
+        <div class="icon i-green">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="2"/><path d="M4 10h16"/></svg>
+        </div>
+        <div><div class="value">{{ result.total_copies }}</div><div class="label">Jami nusxa yaraladi</div></div>
+      </div>
+      <div class="stat">
+        <div class="icon i-amber">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8.5" r="3.2"/><path d="M5.5 20a6.5 6.5 0 0113 0"/></svg>
+        </div>
+        <div><div class="value">{{ result.authors_count }}</div><div class="label">Muallif (taxminan)</div></div>
+      </div>
+      <div class="stat">
+        <div class="icon i-purple">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7l8-3.5L20 7v10l-8 3.5L4 17z"/><path d="M4 7l8 3.5 8-3.5"/><path d="M12 10.5V21"/></svg>
+        </div>
+        <div><div class="value">{{ result.categories_count }}</div><div class="label">Toifa (taxminan)</div></div>
+      </div>
+    </div>
+
+    <div class="small muted" style="margin-bottom:14px">
+      <b>Tanilgan ustunlar:</b>
+      {% for field, label in result.column_labels.items %}
+        <span class="badge badge-blue" style="margin-right:6px">{{ label }}</span>
+      {% empty %}
+        <span>—</span>
+      {% endfor %}
+    </div>
+
+    {% if not result.column_labels.author %}
+      <div class="msg msg-warning" style="margin-bottom:10px">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7.5V12l3 2"/></svg>
+        <span>Muallif ustuni topilmadi — bo'sh qatorlar "Noma'lum muallif" sifatida yoziladi.</span>
+      </div>
+    {% endif %}
+    {% if not result.column_labels.category %}
+      <div class="msg msg-warning" style="margin-bottom:10px">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7.5V12l3 2"/></svg>
+        <span>Toifa ustuni topilmadi — bo'sh qatorlar "Boshqa" toifasiga yoziladi.</span>
+      </div>
+    {% endif %}
+    {% if not result.column_labels.shelf %}
+      <div class="msg msg-info" style="margin-bottom:10px">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v5.5"/><path d="M12 7.8v.3"/></svg>
+        <span>Javon ustuni topilmadi — javon manzili bo'sh qoladi, keyinroq to'ldirish mumkin.</span>
+      </div>
+    {% endif %}
+
+    <div class="table-wrap">
+      <table class="data">
+        <thead>
+          <tr>
+            <th class="num">№</th><th>Kitob nomi</th><th>Muallif</th>
+            <th>Toifa</th><th>Yil</th><th>Soni</th><th>Javon</th>
+          </tr>
+        </thead>
+        <tbody>
+        {% for row in result.preview %}
+          <tr>
+            <td class="num">{{ row.row_number }}</td>
+            <td><b>{{ row.title }}</b></td>
+            <td class="small">{{ row.author }}</td>
+            <td class="small">{{ row.category }}</td>
+            <td class="small text-center">{{ row.year|default:"—" }}</td>
+            <td class="text-center">{{ row.quantity }}</td>
+            <td class="small">{{ row.shelf|default:"—" }}</td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% if result.total > result.preview|length %}
+      <div class="small muted" style="margin-top:8px">
+        … va yana {{ result.total|add:"-12" }} ta qator (faqat birinchi 12 tasi ko'rsatildi).
+      </div>
+    {% endif %}
+
+    <div class="form-actions">
+      <form method="post" action="{% url 'books:bulk_import_confirm' token=token %}">
+        {% csrf_token %}
+        <button class="btn btn-primary" type="submit">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6.5L9.5 17.5l-5-5"/></svg>
+          Tasdiqlash va bazaga yozish
+        </button>
+      </form>
+      <a href="{% url 'books:bulk_import' %}" class="btn btn-light">Boshqa fayl tanlash</a>
+    </div>
+  </div>
+</div>
+{% endblock %}

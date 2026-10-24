@@ -1,0 +1,98 @@
+{% extends "base.html" %}
+{% block title %}Excel orqali kitob qo'shish — {{ LIBRARY_NAME }}{% endblock %}
+{% block page_title %}Excel orqali kitob qo'shish{% endblock %}
+
+{% block content %}
+<div class="card" style="max-width:720px">
+  <div class="card-head"><h2>Excel fayldan ommaviy qo'shish</h2></div>
+  <div class="card-body">
+    <p class="small muted" style="margin-top:0">
+      Bitta Excel faylda minglab qator bo'lishi mumkin. Tizim ustun
+      nomlarini o'zi taniydi, muallif va toifalarni avtomatik guruhlab,
+      har bir kitob uchun kerakli sondagi nusxa yaratadi. Hech narsa
+      darhol yozilmaydi — avval tahlil natijasi ko'rsatiladi, siz
+      tasdiqlagandan keyin bazaga yoziladi.
+    </p>
+
+    {% if form.file.errors or form.non_field_errors %}
+      <div class="messages">
+        {% for error in form.non_field_errors %}
+          <div class="msg msg-error">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18.5 5.5l-13 13"/><path d="M5.5 5.5l13 13"/></svg>
+            <span>{{ error }}</span>
+          </div>
+        {% endfor %}
+        {% for error in form.file.errors %}
+          <div class="msg msg-error">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18.5 5.5l-13 13"/><path d="M5.5 5.5l13 13"/></svg>
+            <span>{{ error }}</span>
+          </div>
+        {% endfor %}
+      </div>
+    {% endif %}
+
+    <form method="post" enctype="multipart/form-data" id="bulk-import-form">
+      {% csrf_token %}
+      <label class="dropzone" id="dropzone">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M12 15.5V4"/><path d="M8 8l4-4 4 4"/>
+          <path d="M5 16v2.5A2.5 2.5 0 007.5 21h9a2.5 2.5 0 002.5-2.5V16"/>
+        </svg>
+        <div class="t" id="dropzone-text">Excel faylni shu yerga tashlang yoki tanlang</div>
+        <div class="d">.xlsx yoki .xlsm, 15 MB gacha</div>
+        {{ form.file }}
+      </label>
+
+      <div class="form-actions">
+        <button class="btn btn-primary" type="submit">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 12h16"/><path d="M13 5l7 7-7 7"/></svg>
+          Tahlil qilish
+        </button>
+        <a href="{% url 'books:list' %}" class="btn btn-light">Bekor qilish</a>
+      </div>
+    </form>
+
+    <div class="card-body" style="padding:14px 0 0;border-top:1px solid var(--line);margin-top:18px">
+      <div class="small muted">
+        <b>Ustun nomlari erkin.</b> Sarlavhada quyidagi so'zlardan biri
+        bo'lsa yetarli: <i>kitob nomi / nomi</i>, <i>muallif</i>,
+        <i>toifa / janr</i>, <i>nashriyot</i>, <i>yil</i>, <i>isbn</i>,
+        <i>soni / nusxa</i>, <i>javon / joy</i>, <i>narx</i>, <i>tavsif</i>.
+        Faqat kitob nomi ustuni shart.
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+(function () {
+  var zone = document.getElementById("dropzone");
+  var input = zone.querySelector("input[type=file]");
+  var text = document.getElementById("dropzone-text");
+  function showName() {
+    if (input.files && input.files[0]) {
+      text.textContent = input.files[0].name;
+    }
+  }
+  input.addEventListener("change", showName);
+  ["dragenter", "dragover"].forEach(function (evt) {
+    zone.addEventListener(evt, function (e) {
+      e.preventDefault();
+      zone.classList.add("drag");
+    });
+  });
+  ["dragleave", "drop"].forEach(function (evt) {
+    zone.addEventListener(evt, function (e) {
+      e.preventDefault();
+      zone.classList.remove("drag");
+    });
+  });
+  zone.addEventListener("drop", function (e) {
+    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+      input.files = e.dataTransfer.files;
+      showName();
+    }
+  });
+})();
+</script>
+{% endblock %}

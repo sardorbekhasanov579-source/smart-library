@@ -9,6 +9,7 @@
   <span class="spacer"></span>
   {% if can_manage %}
     <a href="{% url 'books:create' %}" class="btn btn-primary">➕ Yangi kitob</a>
+    <a href="{% url 'books:bulk_import' %}" class="btn btn-navy">📊 Exseldan qo'shish</a>
     <a href="{% url 'catalog:home' %}" class="btn btn-light">🗂️ Katalog</a>
   {% endif %}
 </div>
