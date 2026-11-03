@@ -201,6 +201,8 @@ def _call_gemini(prompt, api_key, model):
                 "temperature": 0.7,
                 # Javob to'g'ridan-to'g'ri JSON bo'lib kelsin
                 "responseMimeType": "application/json",
+                # Uzun javob yarmida uzilib qolmasin
+                "maxOutputTokens": 32768,
             },
         },
         {"Content-Type": "application/json", "x-goog-api-key": api_key},
@@ -212,8 +214,14 @@ def _call_gemini(prompt, api_key, model):
         if reason:
             raise RuntimeError(f"Gemini javobni bloklandi: {reason}")
         return ""
+    finish = candidates[0].get("finishReason", "")
+    if finish and finish not in ("STOP", "MAX_TOKENS"):
+        logger.warning("Gemini javobi to'liq emas: %s", finish)
     parts = (candidates[0].get("content") or {}).get("parts") or []
-    return "".join(p.get("text", "") for p in parts if isinstance(p, dict))
+    # "Fikrlash" qismlari (thought) javobga qo'shilmaydi
+    return "".join(
+        p.get("text", "") for p in parts if isinstance(p, dict) and not p.get("thought")
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -228,14 +236,8 @@ def extract_questions(raw_text):
     fence = re.search(r"```(?:json)?\s*(.+?)```", text, re.S)
     if fence:
         text = fence.group(1).strip()
-    start, end = text.find("["), text.rfind("]")
-    if start == -1 or end == -1 or end < start:
-        return []
-    try:
-        data = json.loads(text[start:end + 1])
-    except json.JSONDecodeError:
-        return []
-    if not isinstance(data, list):
+    data = _parse_items(text)
+    if not data:
         return []
 
     cleaned = []
@@ -266,6 +268,55 @@ def extract_questions(raw_text):
     return cleaned
 
 
+def _parse_items(text):
+    """JSON massivni o'qiydi. Javob o'rtada uzilib qolgan bo'lsa ham, to'liq
+    yozilgan savollarni bittalab ajratib oladi. {"questions": [...]} ko'rinishini
+    ham tushunadi."""
+    try:
+        data = json.loads(text)
+    except json.JSONDecodeError:
+        data = None
+    if isinstance(data, dict):
+        for value in data.values():
+            if isinstance(value, list):
+                return value
+        return [data] if ("text" in data or "question" in data) else []
+    if isinstance(data, list):
+        return data
+
+    start = text.find("[")
+    if start == -1:
+        start = text.find("{") - 1
+        if start < -1:
+            return []
+    decoder = json.JSONDecoder()
+    items, pos = [], start + 1
+    while pos < len(text):
+        while pos < len(text) and text[pos] in " \t\r\n,":
+            pos += 1
+        if pos >= len(text) or text[pos] != "{":
+            break
+        try:
+            obj, pos = decoder.raw_decode(text, pos)
+        except json.JSONDecodeError:
+            break  # shu yerda javob uzilgan — oldingilari saqlanadi
+        if isinstance(obj, dict):
+            items.append(obj)
+    return items
+
+
+def _ask_provider(provider, prompt, api_key):
+    if provider == "openai":
+        return _call_openai(prompt, api_key, get_model(provider))
+    if provider == "gemini":
+        return _call_gemini(prompt, api_key, get_model(provider))
+    return _call_anthropic(prompt, api_key, get_model(provider))
+
+
+# Bir so'rovda shuncha savol so'raladi: javob qisqa bo'lsa uzilib qolmaydi
+BATCH_SIZE = 10
+
+
 # ---------------------------------------------------------------------------
 # Asosiy funksiya
 # ---------------------------------------------------------------------------
@@ -282,39 +333,60 @@ def generate_questions(book, count=30):
             "Sozlamalarda `ai_api_key` ni to'ldirsangiz mazmunli savollar yaratiladi.",
         )
 
-    prompt = PROMPT_TEMPLATE.format(
-        count=count,
-        title=book.title,
-        author=book.author.full_name if book.author_id else "—",
-        category=str(book.category) if book.category_id else "—",
-        year=book.publication_year or "—",
-        publisher=book.publisher or "—",
-        description=(book.description or "—")[:1500],
-    )
-
-    try:
-        if provider == "openai":
-            raw = _call_openai(prompt, api_key, get_model(provider))
-        elif provider == "gemini":
-            raw = _call_gemini(prompt, api_key, get_model(provider))
-        else:
-            raw = _call_anthropic(prompt, api_key, get_model(provider))
-    except RuntimeError as exc:
-        logger.warning("AI so'rovi muvaffaqiyatsiz: %s", exc)
-        return (
-            build_fallback_questions(book, count),
-            "fallback",
-            f"AI javob bermadi ({exc}). Zaxira savollar tuzildi.",
+    questions, seen = [], set()
+    last_error, last_raw = "", ""
+    attempts = 0
+    # Savollar 10 tadan so'raladi: uzun javob uzilib qolmaydi va bitta
+    # so'rov muvaffaqiyatsiz bo'lsa ham qolganlari saqlanadi
+    while len(questions) < count and attempts < (count // BATCH_SIZE) + 2:
+        attempts += 1
+        need = min(BATCH_SIZE, count - len(questions))
+        prompt = PROMPT_TEMPLATE.format(
+            count=need,
+            title=book.title,
+            author=book.author.full_name if book.author_id else "—",
+            category=str(book.category) if book.category_id else "—",
+            year=book.publication_year or "—",
+            publisher=book.publisher or "—",
+            description=(book.description or "—")[:1500],
         )
+        if questions:
+            asked = "\n".join(f"- {q['text'][:120]}" for q in questions[-30:])
+            prompt += (
+                "\nQuyidagi savollar allaqachon tuzilgan — ularni takrorlamang, "
+                f"kitobning boshqa joylaridan so'rang:\n{asked}\n"
+            )
+        try:
+            raw = _ask_provider(provider, prompt, api_key)
+        except RuntimeError as exc:
+            logger.warning("AI so'rovi muvaffaqiyatsiz: %s", exc)
+            last_error = str(exc)
+            if not questions:
+                break  # birinchi so'rovning o'zi ishlamadi — qayta urinmaymiz
+            continue
+        batch = extract_questions(raw)
+        if not batch:
+            last_raw = (raw or "")[:300]
+            logger.warning("AI javobi o'qilmadi: %r", last_raw)
+            continue
+        for item in batch:
+            key = re.sub(r"\W+", " ", item["text"].lower()).strip()
+            if key and key not in seen:
+                seen.add(key)
+                questions.append(item)
 
-    questions = extract_questions(raw)
-    if not questions:
-        return (
-            build_fallback_questions(book, count),
-            "fallback",
-            "AI javobi tushunarsiz bo'ldi. Zaxira savollar tuzildi.",
+    if questions:
+        questions = questions[:count]
+        return questions, "ai", f"AI {len(questions)} ta savol yaratdi."
+
+    if last_error:
+        message = f"AI javob bermadi ({last_error[:200]}). Zaxira savollar tuzildi."
+    else:
+        message = (
+            "AI javobi tushunarsiz bo'ldi. Zaxira savollar tuzildi."
+            + (f" Javob boshi: {last_raw[:120]}" if last_raw else " (Javob bo'sh keldi.)")
         )
-    return questions[:count], "ai", f"AI {len(questions[:count])} ta savol yaratdi."
+    return build_fallback_questions(book, count), "fallback", message
 
 
 # ---------------------------------------------------------------------------
