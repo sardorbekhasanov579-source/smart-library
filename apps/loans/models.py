@@ -198,6 +198,70 @@ class Loan(models.Model):
         return self
 
 
+class BorrowRequest(models.Model):
+    """Kitobxon ilovada «shu kitobni oldim» deb belgilaydi, kutubxonachi
+    Telegram yoki admin panel orqali tasdiqlaydi. Tasdiqlansa haqiqiy
+    berish operatsiyasi (Loan) yaratiladi."""
+
+    class Status(models.TextChoices):
+        PENDING = "pending", "Kutilmoqda"
+        APPROVED = "approved", "Tasdiqlandi"
+        REJECTED = "rejected", "Rad etildi"
+        CANCELLED = "cancelled", "Bekor qilindi"
+
+    reader = models.ForeignKey(
+        "readers.Reader", verbose_name="Kitobxon", on_delete=models.CASCADE,
+        related_name="borrow_requests",
+    )
+    book = models.ForeignKey(
+        "books.Book", verbose_name="Kitob", on_delete=models.CASCADE,
+        related_name="borrow_requests",
+    )
+    copy = models.ForeignKey(
+        BookCopy, verbose_name="Nusxa", on_delete=models.SET_NULL,
+        null=True, blank=True, related_name="borrow_requests",
+    )
+    loan = models.ForeignKey(
+        Loan, verbose_name="Berish operatsiyasi", on_delete=models.SET_NULL,
+        null=True, blank=True, related_name="borrow_requests",
+    )
+    status = models.CharField(
+        "Holat", max_length=16, choices=Status.choices, default=Status.PENDING
+    )
+    reject_reason = models.CharField("Rad etish sababi", max_length=255, blank=True)
+    created_at = models.DateTimeField("Yuborilgan", default=timezone.now)
+    decided_at = models.DateTimeField("Ko'rib chiqilgan", null=True, blank=True)
+    decided_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, verbose_name="Ko'rib chiqqan xodim",
+        on_delete=models.SET_NULL, null=True, blank=True,
+        related_name="decided_borrow_requests",
+    )
+    decided_via = models.CharField("Qayerdan", max_length=16, blank=True)
+    decided_by_name = models.CharField("Ko'rib chiqqan (Telegram)", max_length=100, blank=True)
+    # Adminlarga yuborilgan Telegram xabarlari: [[chat_id, message_id], ...]
+    admin_messages = models.JSONField("Admin xabarlari", default=list, blank=True)
+
+    class Meta:
+        db_table = "borrow_requests"
+        verbose_name = "Kitob olish so'rovi"
+        verbose_name_plural = "Kitob olish so'rovlari"
+        ordering = ["-created_at"]
+        indexes = [models.Index(fields=["status"])]
+
+    def __str__(self):
+        return f"{self.reader.full_name} -> {self.book.title} ({self.get_status_display()})"
+
+    @property
+    def is_pending(self):
+        return self.status == self.Status.PENDING
+
+    @property
+    def decider_label(self):
+        if self.decided_by_id:
+            return self.decided_by.full_name or self.decided_by.username
+        return self.decided_by_name or ""
+
+
 class Reservation(models.Model):
     """Kitobxon tomonidan kitobga buyurtma (ixtiyoriy modul)."""
 

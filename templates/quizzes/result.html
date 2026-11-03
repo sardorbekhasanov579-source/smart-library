@@ -28,6 +28,48 @@
     {% endif %}
   </div>
 
+  {% if not attempt.passed or feedback.topics %}
+    {% if feedback_pending %}
+      <div class="card insight" id="insight">
+        <div class="head"><span class="badge-ai">AI tahlil</span></div>
+        <div class="thinking"><span class="spinner"></span>Javoblaringiz tahlil qilinmoqda — qaysi mavzularni qayta o'qish kerakligini aniqlayapmiz…</div>
+      </div>
+      <script>
+      (function () {
+        var n = 0;
+        function poll() {
+          n += 1;
+          fetch("{% url 'quizzes:feedback_status' assignment.token %}", { credentials: "same-origin" })
+            .then(function (r) { return r.json(); })
+            .then(function (d) {
+              if (d.status !== "pending") { location.reload(); return; }
+              if (n < 40) setTimeout(poll, 4000);
+            })
+            .catch(function () { if (n < 40) setTimeout(poll, 6000); });
+        }
+        setTimeout(poll, 3000);
+      })();
+      </script>
+    {% elif feedback.status == 'done' and feedback.summary %}
+      <div class="card insight">
+        <div class="head">
+          <span class="badge-ai">{% if feedback.source == 'ai' %}AI tahlil{% else %}Tahlil{% endif %}</span>
+          <h2 style="margin:0">Nimani qayta o'qish kerak</h2>
+        </div>
+        <p style="margin:0">{{ feedback.summary }}</p>
+        {% if feedback.topics %}
+          <ol>{% for t in feedback.topics %}<li>{{ t }}</li>{% endfor %}</ol>
+        {% endif %}
+        {% if feedback.advice %}<div class="advice">💡 {{ feedback.advice }}</div>{% endif %}
+        {% if assignment.can_attempt %}
+          <a href="{{ assignment.get_absolute_url }}" class="btn btn-primary btn-block mt">
+            Testni qayta ishlash ({{ assignment.max_attempts }} tadan {{ assignment.attempts_used }} ta urinish ishlatildi)
+          </a>
+        {% endif %}
+      </div>
+    {% endif %}
+  {% endif %}
+
   {% if show_answers and answers %}
     <div class="card">
       <h2>Javoblar tahlili</h2>
@@ -72,6 +114,10 @@
 {% endif %}
 
 <div class="card">
-  <a href="{% url 'quizzes:portal' %}" class="btn btn-light btn-block">🏠 Shaxsiy kabinet</a>
+  {% if in_cabinet %}
+    <a href="{% url 'quizzes:reader_quizzes' %}" class="btn btn-light btn-block">← Testlarim</a>
+  {% else %}
+    <a href="{% url 'quizzes:portal' %}" class="btn btn-light btn-block">🏠 Shaxsiy kabinet</a>
+  {% endif %}
 </div>
 {% endblock %}

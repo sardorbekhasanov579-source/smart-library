@@ -10,6 +10,8 @@ urlpatterns = [
     path("qaytarish/", views.ReturnBookView.as_view(), name="return"),
     path("muddati-otgan/", views.OverdueListView.as_view(), name="overdue"),
     path("nusxa-qidirish/", views.CopyLookupView.as_view(), name="copy_lookup"),
+    path("sorovlar/", views.BorrowRequestListView.as_view(), name="requests"),
+    path("sorovlar/<int:pk>/", views.BorrowRequestDecideView.as_view(), name="request_decide"),
     path("<int:pk>/", views.LoanDetailView.as_view(), name="detail"),
     path("<int:pk>/uzaytirish/", views.ExtendLoanView.as_view(), name="extend"),
 ]

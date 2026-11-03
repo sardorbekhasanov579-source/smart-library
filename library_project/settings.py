@@ -162,6 +162,16 @@ else:
         }
     }
 
+# Kesh bazada saqlanadi: server bir nechta jarayonda (gunicorn workers) ishlaydi,
+# "test tayyorlanmoqda" kabi holatlar hammasiga birdek ko'rinishi kerak.
+# Jadval migratsiya orqali o'zi yaratiladi (quizzes 0003).
+CACHES = {
+    "default": {
+        "BACKEND": "django.core.cache.backends.db.DatabaseCache",
+        "LOCATION": "django_cache",
+    }
+}
+
 AUTH_USER_MODEL = "users.User"
 
 AUTH_PASSWORD_VALIDATORS = [

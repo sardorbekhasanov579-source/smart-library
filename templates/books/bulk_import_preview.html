@@ -55,10 +55,15 @@
         <span>Toifa ustuni topilmadi — bo'sh qatorlar "Boshqa" toifasiga yoziladi.</span>
       </div>
     {% endif %}
-    {% if not result.column_labels.shelf %}
+    {% if not result.located_count %}
       <div class="msg msg-info" style="margin-bottom:10px">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v5.5"/><path d="M12 7.8v.3"/></svg>
-        <span>Javon ustuni topilmadi — javon manzili bo'sh qoladi, keyinroq to'ldirish mumkin.</span>
+        <span>Xona/javon/taxcha ustunlari topilmadi — joylashuvni keyin «Joylashuv yozish» rejimida yuklash mumkin.</span>
+      </div>
+    {% else %}
+      <div class="msg msg-success" style="margin-bottom:10px">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6.5L9.5 17.5l-5-5"/></svg>
+        <span>{{ result.located_count }} ta kitobning joylashuvi ham yoziladi.</span>
       </div>
     {% endif %}
 
@@ -67,7 +72,7 @@
         <thead>
           <tr>
             <th class="num">№</th><th>Kitob nomi</th><th>Muallif</th>
-            <th>Toifa</th><th>Yil</th><th>Soni</th><th>Javon</th>
+            <th>Toifa</th><th>Yil</th><th>Soni</th><th>Joyi</th>
           </tr>
         </thead>
         <tbody>
@@ -94,6 +99,7 @@
     <div class="form-actions">
       <form method="post" action="{% url 'books:bulk_import_confirm' token=token %}">
         {% csrf_token %}
+        <input type="hidden" name="mode" value="yangi">
         <button class="btn btn-primary" type="submit">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6.5L9.5 17.5l-5-5"/></svg>
           Tasdiqlash va bazaga yozish

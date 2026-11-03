@@ -13,6 +13,15 @@ def site_settings(request):
     if user is not None and user.is_authenticated:
         ctx["can_manage"] = user.can_manage_library()
         ctx["is_admin_role"] = user.is_admin
+        if ctx["can_manage"]:
+            try:
+                from apps.loans.models import BorrowRequest
+
+                ctx["pending_requests_count"] = BorrowRequest.objects.filter(
+                    status=BorrowRequest.Status.PENDING
+                ).count()
+            except Exception:  # migratsiya hali bajarilmagan bo'lsa
+                ctx["pending_requests_count"] = 0
     else:
         ctx["can_manage"] = False
         ctx["is_admin_role"] = False

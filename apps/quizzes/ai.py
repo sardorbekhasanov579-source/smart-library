@@ -458,3 +458,93 @@ def build_fallback_questions(book, count=30):
     # yoki AI kaliti ulanadi.
     random.shuffle(questions)
     return questions[:count]
+
+
+# ---------------------------------------------------------------------------
+# Xato javoblarni tahlil qilish (kitobxonga nimani qayta o'qish kerakligi)
+# ---------------------------------------------------------------------------
+ANALYSIS_PROMPT = """Siz tajribali kutubxonachi-pedagogsiz. Kitobxon «{title}»
+({author}) kitobi bo'yicha test topshirdi va {percent}% natija oldi
+(o'tish chegarasi {pass_percent}%).
+
+Kitobxon xato javob bergan savollar:
+{items}
+
+Vazifa: xatolarga qarab kitobxon kitobning qaysi mavzulari, boblari,
+qahramonlari yoki voqealarini yaxshi o'zlashtirmaganini aniqlang va nimani
+qayta o'qishi kerakligini ayting. O'zbek tilida (lotin yozuvida), samimiy,
+qisqa va aniq yozing. Savollarni so'zma-so'z takrorlamang — mavzu sifatida
+umumlashtiring.
+
+Javobni FAQAT quyidagi JSON ko'rinishida qaytaring, boshqa matn qo'shmang:
+{{
+  "summary": "1-2 gapli umumiy xulosa",
+  "topics": ["qayta o'qish kerak bo'lgan mavzu 1", "mavzu 2"],
+  "advice": "1-2 gapli amaliy maslahat"
+}}
+topics ro'yxatida 2 tadan 5 tagacha band bo'lsin.
+"""
+
+
+def ask(prompt):
+    """Sozlangan AI provayderiga matnli so'rov yuboradi, javob matnini qaytaradi."""
+    provider = get_provider()
+    api_key = get_api_key(provider)
+    if not api_key:
+        raise RuntimeError("AI kaliti kiritilmagan")
+    if provider == "openai":
+        return _call_openai(prompt, api_key, get_model(provider))
+    if provider == "gemini":
+        return _call_gemini(prompt, api_key, get_model(provider))
+    return _call_anthropic(prompt, api_key, get_model(provider))
+
+
+def _extract_object(raw_text):
+    if not raw_text:
+        return None
+    text = raw_text.strip()
+    fence = re.search(r"```(?:json)?\s*(.+?)```", text, re.S)
+    if fence:
+        text = fence.group(1).strip()
+    start, end = text.find("{"), text.rfind("}")
+    if start == -1 or end <= start:
+        return None
+    try:
+        data = json.loads(text[start:end + 1])
+    except json.JSONDecodeError:
+        return None
+    return data if isinstance(data, dict) else None
+
+
+def analyze_mistakes(book, items, percent, pass_percent):
+    """Xato javoblar asosida tavsiya. {summary, topics, advice} yoki None."""
+    lines = []
+    for number, item in enumerate(items[:20], start=1):
+        lines.append(
+            f"{number}. Savol: {item['question']}\n"
+            f"   Kitobxon javobi: {item['given'] or 'javob bermagan'}\n"
+            f"   To'g'ri javob: {item['correct']}"
+            + (f"\n   Izoh: {item['explanation']}" if item.get("explanation") else "")
+        )
+    prompt = ANALYSIS_PROMPT.format(
+        title=book.title,
+        author=book.author.full_name if book.author_id else "—",
+        percent=percent,
+        pass_percent=pass_percent,
+        items="\n".join(lines),
+    )
+    data = _extract_object(ask(prompt))
+    if not data:
+        return None
+    topics = data.get("topics") or []
+    if isinstance(topics, str):
+        topics = [topics]
+    topics = [str(t).strip() for t in topics if str(t).strip()][:6]
+    summary = str(data.get("summary") or "").strip()
+    if not (summary or topics):
+        return None
+    return {
+        "summary": summary[:600],
+        "topics": [t[:200] for t in topics],
+        "advice": str(data.get("advice") or "").strip()[:600],
+    }

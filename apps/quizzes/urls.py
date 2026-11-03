@@ -30,8 +30,29 @@ urlpatterns = [
     path("chiqish/", views.ReaderLogoutView.as_view(), name="logout"),
     # Kitobxon ilovasining 4 bo'limi
     path("kabinet/", views.ReaderPortalView.as_view(), name="portal"),
+    path("kabinet/k/<str:token>/", views.ReaderMagicLoginView.as_view(), name="magic_login"),
     path("kabinet/kitoblar/", views.ReaderBooksView.as_view(), name="reader_books"),
+    path(
+        "kabinet/kitoblar/<int:book_id>/oldim/",
+        views.ReaderBorrowView.as_view(),
+        name="reader_borrow",
+    ),
+    path(
+        "kabinet/sorov/<int:pk>/bekor/",
+        views.ReaderBorrowCancelView.as_view(),
+        name="reader_borrow_cancel",
+    ),
     path("kabinet/testlar/", views.ReaderQuizzesView.as_view(), name="reader_quizzes"),
+    path(
+        "kabinet/testlar/<int:loan_id>/boshlash/",
+        views.ReaderStartQuizView.as_view(),
+        name="reader_quiz_start",
+    ),
+    path(
+        "kabinet/testlar/<int:loan_id>/holat/",
+        views.ReaderQuizStatusView.as_view(),
+        name="reader_quiz_status",
+    ),
     path(
         "kabinet/sozlamalar/",
         views.ReaderSettingsView.as_view(),
@@ -39,6 +60,7 @@ urlpatterns = [
     ),
     path("t/<str:token>/", views.TakeQuizView.as_view(), name="take"),
     path("t/<str:token>/natija/", views.QuizResultView.as_view(), name="result"),
+    path("t/<str:token>/tahlil/", views.QuizFeedbackStatusView.as_view(), name="feedback_status"),
 
     # --- Tashqi xizmatlar (login talab qilmaydi, maxfiy kalit bilan) ----------
     path(

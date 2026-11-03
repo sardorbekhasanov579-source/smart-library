@@ -282,3 +282,84 @@ class CopyLookupView(LibrarianRequiredMixin, View):
                 "available": copy.status == CopyStatus.AVAILABLE,
             }
         )
+
+
+# ---------------------------------------------------------------------------
+# Kitobxonlarning «kitobni oldim» so'rovlari
+# ---------------------------------------------------------------------------
+class BorrowRequestListView(LibrarianRequiredMixin, ListView):
+    template_name = "loans/request_list.html"
+    context_object_name = "requests"
+    paginate_by = 30
+
+    def get_queryset(self):
+        from apps.loans.models import BorrowRequest
+
+        status = self.request.GET.get("holat", "pending")
+        qs = BorrowRequest.objects.select_related(
+            "reader", "book__author", "copy", "loan", "decided_by"
+        )
+        if status in dict(BorrowRequest.Status.choices):
+            qs = qs.filter(status=status)
+        query = self.request.GET.get("q", "").strip()
+        if query:
+            qs = qs.filter(
+                Q(reader__full_name__icontains=query)
+                | Q(reader__reader_code__icontains=query)
+                | Q(book__title__icontains=query)
+            )
+        if status == "pending":
+            return qs.order_by("created_at")
+        return qs.order_by("-decided_at", "-created_at")
+
+    def get_context_data(self, **kwargs):
+        from django.db.models import Count
+
+        from apps.loans.models import BorrowRequest
+
+        ctx = super().get_context_data(**kwargs)
+        ctx["status"] = self.request.GET.get("holat", "pending")
+        ctx["statuses"] = BorrowRequest.Status.choices
+        counts = dict(
+            BorrowRequest.objects.values_list("status").annotate(n=Count("id"))
+            .values_list("status", "n")
+        )
+        ctx["counts"] = counts
+        # Kutilayotgan so'rovlar uchun tanlash mumkin bo'lgan bo'sh nusxalar
+        if ctx["status"] == "pending":
+            book_ids = {r.book_id for r in ctx["requests"]}
+            free = {}
+            for copy in BookCopy.objects.filter(
+                book_id__in=book_ids, status=CopyStatus.AVAILABLE
+            ).order_by("inventory_number"):
+                free.setdefault(copy.book_id, []).append(copy)
+            for r in ctx["requests"]:
+                r.free_copies = free.get(r.book_id, [])
+        return ctx
+
+
+class BorrowRequestDecideView(LibrarianRequiredMixin, View):
+    def post(self, request, pk):
+        from apps.loans import requests as borrow
+        from apps.loans.models import BorrowRequest
+
+        item = get_object_or_404(BorrowRequest.objects.select_related("reader", "book"), pk=pk)
+        action = request.POST.get("amal")
+        name = request.user.full_name or request.user.username
+        if action == "tasdiq":
+            copy = None
+            copy_id = request.POST.get("nusxa")
+            if copy_id and copy_id.isdigit():
+                copy = BookCopy.objects.filter(pk=int(copy_id), book_id=item.book_id).first()
+            ok, text = borrow.approve(item, user=request.user, via="panel", by_name=name, copy=copy)
+        elif action == "rad":
+            ok, text = borrow.reject(
+                item, user=request.user, via="panel", by_name=name,
+                reason=request.POST.get("sabab", ""),
+            )
+        else:
+            ok, text = False, "Noma'lum amal."
+        (messages.success if ok else messages.error)(request, text)
+        from django.urls import reverse
+
+        return redirect(reverse("loans:requests") + "?holat=pending")

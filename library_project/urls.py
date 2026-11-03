@@ -1,10 +1,29 @@
+import time
+
 from django.conf import settings
 from django.conf.urls.static import static
 from django.contrib import admin
+from django.http import HttpResponse
 from django.urls import include, path, re_path
 from django.views.generic import TemplateView
 
+_started_at = time.time()
+
+
+def ping(request):
+    """Yengil "uyg'otish" manzili.
+
+    Render kabi bepul serverlar uzoq ishlatilmasa uxlab qoladi. Tashqi
+    xizmat (masalan cron-job.org) shu manzilga har 10-14 daqiqada bir marta
+    kirib tursa, server kamroq uxlaydi. Hech qanday bazaga murojaat
+    qilmaydi — shuning uchun tez va xavfsiz, istalgan vaqt chaqirilaveradi.
+    """
+    uptime = int(time.time() - _started_at)
+    return HttpResponse(f"ok {uptime}s", content_type="text/plain")
+
+
 urlpatterns = [
+    path("ping/", ping, name="ping"),
     path("admin/", admin.site.urls),
     path("", include("apps.core.urls")),
     path("foydalanuvchilar/", include("apps.users.urls")),

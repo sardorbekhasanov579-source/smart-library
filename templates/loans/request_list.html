@@ -1,0 +1,98 @@
+{% extends "base.html" %}
+{% load library_extras %}
+{% block title %}Kitob so'rovlari — {{ LIBRARY_NAME }}{% endblock %}
+{% block page_title %}Kitob olish so'rovlari{% endblock %}
+
+{% block content %}
+<div class="pill-row mb-2">
+  {% for code, label in statuses %}
+    <a href="?holat={{ code }}" class="pill {% if status == code %}active{% endif %}">
+      {{ label }} · {{ counts|getitem:code|default:0 }}
+    </a>
+  {% endfor %}
+  <a href="?holat=hammasi" class="pill {% if status == 'hammasi' %}active{% endif %}">Hammasi</a>
+</div>
+
+<div class="card mb-2">
+  <div class="card-body">
+    <form method="get" class="filters">
+      <input type="hidden" name="holat" value="{{ status }}">
+      <div class="field" style="flex:2;min-width:220px">
+        <label>Qidiruv</label>
+        <input type="search" name="q" class="form-input" value="{{ request.GET.q|default:'' }}" placeholder="Kitobxon, kod yoki kitob nomi">
+      </div>
+      <button class="btn btn-primary" type="submit">Qidirish</button>
+    </form>
+    <div class="small muted" style="margin-top:8px">
+      Kitobxon ilovada «Shu kitobni oldim» deb belgilagan kitoblar. Shu yerda yoki
+      Telegram'dagi tugmalar orqali tasdiqlang — tasdiqlansa kitob uning nomiga beriladi.
+    </div>
+  </div>
+</div>
+
+<div class="card">
+  <div class="table-wrap">
+    <table class="data">
+      <thead>
+        <tr>
+          <th>Kitobxon</th><th>Kitob</th><th>Joyi</th><th>Yuborilgan</th>
+          {% if status == 'pending' %}<th style="min-width:300px">Qaror</th>{% else %}<th>Holat</th><th>Kim</th>{% endif %}
+        </tr>
+      </thead>
+      <tbody>
+      {% for r in requests %}
+        <tr>
+          <td>
+            <a href="{% url 'readers:detail' r.reader.pk %}"><b>{{ r.reader.full_name }}</b></a>
+            <div class="small muted">{{ r.reader.reader_code }} · {{ r.reader.phone|pretty_phone|default:"—" }}</div>
+          </td>
+          <td>
+            <a href="{{ r.book.get_absolute_url }}"><b>{{ r.book.title|truncatechars:48 }}</b></a>
+            <div class="small muted">{{ r.book.author.full_name }}{% if r.copy %} · Inv. {{ r.copy.inventory_number }}{% endif %}</div>
+          </td>
+          <td class="small">{{ r.book.shelf_location|default:"—" }}</td>
+          <td class="small nowrap">{{ r.created_at|date:"d.m.Y H:i" }}</td>
+          {% if status == 'pending' %}
+            <td>
+              <form method="post" action="{% url 'loans:request_decide' r.pk %}" class="decide">
+                {% csrf_token %}
+                {% if r.free_copies %}
+                  <select name="nusxa" class="form-select" style="max-width:170px">
+                    {% for c in r.free_copies %}
+                      <option value="{{ c.pk }}" {% if r.copy_id == c.pk %}selected{% endif %}>Inv. {{ c.inventory_number }}</option>
+                    {% endfor %}
+                  </select>
+                  <button class="btn btn-green btn-sm" name="amal" value="tasdiq" type="submit">Tasdiqlash</button>
+                {% else %}
+                  <span class="badge badge-red">Bo'sh nusxa yo'q</span>
+                {% endif %}
+                <button class="btn btn-light btn-sm" name="amal" value="rad" type="submit"
+                        onclick="var s=prompt('Rad etish sababi (ixtiyoriy):','');if(s===null)return false;this.form.sabab.value=s;">Rad etish</button>
+                <input type="hidden" name="sabab" value="">
+              </form>
+            </td>
+          {% else %}
+            <td>
+              {% if r.status == 'approved' %}<span class="badge badge-green">Tasdiqlandi</span>
+              {% elif r.status == 'rejected' %}<span class="badge badge-red">Rad etildi</span>
+              {% elif r.status == 'cancelled' %}<span class="badge badge-gray">Bekor qilindi</span>
+              {% else %}<span class="badge badge-amber">Kutilmoqda</span>{% endif %}
+              {% if r.loan %}<div class="small"><a href="{% url 'loans:detail' r.loan.pk %}">Operatsiya</a></div>{% endif %}
+              {% if r.reject_reason %}<div class="small muted">{{ r.reject_reason }}</div>{% endif %}
+            </td>
+            <td class="small">
+              {{ r.decider_label|default:"—" }}
+              {% if r.decided_via == 'telegram' %}<div class="muted">Telegram</div>{% elif r.decided_via == 'panel' %}<div class="muted">Admin panel</div>{% endif %}
+              {% if r.decided_at %}<div class="muted">{{ r.decided_at|date:"d.m.Y H:i" }}</div>{% endif %}
+            </td>
+          {% endif %}
+        </tr>
+      {% empty %}
+        <tr><td colspan="6" class="empty">So'rovlar yo'q</td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% include "_pagination.html" %}
+</div>
+{% endblock %}

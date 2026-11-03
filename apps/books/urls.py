@@ -6,6 +6,12 @@ app_name = "books"
 
 urlpatterns = [
     path("", views.BookListView.as_view(), name="list"),
+    path("javonlar/", views.ShelfMapView.as_view(), name="shelf_map"),
+    path(
+        "javonlar/<int:room>/<str:shelf>/",
+        views.ShelfDetailView.as_view(),
+        name="shelf_detail",
+    ),
     path("yangi/", views.BookCreateView.as_view(), name="create"),
     path("<int:pk>/", views.BookDetailView.as_view(), name="detail"),
     path("<int:pk>/tahrirlash/", views.BookUpdateView.as_view(), name="update"),

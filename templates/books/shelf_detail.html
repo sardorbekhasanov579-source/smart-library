@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% block title %}{{ shelf }} javon — {{ LIBRARY_NAME }}{% endblock %}
+{% block page_title %}{% if room %}{{ room }}-xona · {% endif %}{{ shelf }} javon{% endblock %}
+
+{% block content %}
+<div class="toolbar">
+  <a href="{% url 'books:shelf_map' %}" class="btn btn-light">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 12H6"/><path d="M11 6l-6 6 6 6"/></svg>
+    Javonlar xaritasi
+  </a>
+  <span class="spacer"></span>
+  <span class="strong">{{ count }} ta kitob</span>
+</div>
+
+{% for tier, books in tiers %}
+  <div class="card mb-2">
+    <div class="card-head">
+      <h2>{% if tier %}{{ tier }}-taxcha{% else %}Taxchasi ko'rsatilmagan{% endif %}</h2>
+      <span class="small muted">{{ books|length }} ta</span>
+    </div>
+    <div class="table-wrap">
+      <table class="data">
+        <thead><tr><th class="num">№</th><th>Kitob</th><th>Turi</th><th>Mavjud</th>{% if can_manage %}<th></th>{% endif %}</tr></thead>
+        <tbody>
+        {% for book in books %}
+          <tr>
+            <td class="num">{{ forloop.counter }}</td>
+            <td><a href="{{ book.get_absolute_url }}"><b>{{ book.title }}</b></a>
+              <div class="small muted">{{ book.author.full_name }}</div></td>
+            <td class="small">{{ book.category.name }}</td>
+            <td>{% if book.available_quantity %}<span class="badge badge-green">{{ book.available_quantity }}/{{ book.total_quantity }}</span>{% else %}<span class="badge badge-red">0/{{ book.total_quantity }}</span>{% endif %}</td>
+            {% if can_manage %}<td><a href="{% url 'books:update' book.pk %}" class="btn btn-light btn-sm">Tahrirlash</a></td>{% endif %}
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+{% empty %}
+  <div class="card"><div class="card-body small muted">Bu javonda kitob yo'q.</div></div>
+{% endfor %}
+{% endblock %}

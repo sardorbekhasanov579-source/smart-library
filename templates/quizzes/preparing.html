@@ -1,0 +1,54 @@
+{% extends "quizzes/reader_base.html" %}
+
+{% block title %}Test tayyorlanmoqda — {{ LIBRARY_NAME|default:"Kutubxona" }}{% endblock %}
+{% block page_name %}Testlarim{% endblock %}
+
+{% block content %}
+<div class="card" style="text-align:center;padding:28px 18px">
+  <div class="spinner" style="width:36px;height:36px;margin:0 auto 16px;border-width:3.5px" id="spin"></div>
+  <h1 id="ttl">Test tayyorlanmoqda</h1>
+  <p class="small muted" id="txt" style="margin:6px 0 0">
+    «{{ book.title }}» kitobi bo'yicha savollar tuzilyapti. Bu odatda
+    20–60 soniya davom etadi — sahifani yopmang.
+  </p>
+
+  <form method="post" action="{% url 'quizzes:reader_quiz_start' loan.pk %}" id="go" style="margin-top:18px">
+    {% csrf_token %}
+    <button class="btn btn-primary btn-block" type="submit" id="btn" disabled>Testni boshlash</button>
+  </form>
+  <a href="{% url 'quizzes:reader_quizzes' %}" class="btn btn-ghost btn-block mt-sm">Keyinroq</a>
+</div>
+
+<script>
+(function () {
+  var url = "{% url 'quizzes:reader_quiz_status' loan.pk %}";
+  var tries = 0;
+  function done(ok) {
+    document.getElementById("spin").style.display = "none";
+    if (ok) {
+      document.getElementById("ttl").textContent = "Test tayyor!";
+      document.getElementById("txt").textContent = "Boshlash tugmasini bosing.";
+      var btn = document.getElementById("btn");
+      btn.disabled = false;
+      document.getElementById("go").submit();
+    } else {
+      document.getElementById("ttl").textContent = "Test hozircha tayyor emas";
+      document.getElementById("txt").textContent =
+        "Bu kitob uchun savollar tuzilmadi. Kutubxonachiga ayting yoki keyinroq urinib ko'ring.";
+    }
+  }
+  function poll() {
+    tries += 1;
+    fetch(url, { credentials: "same-origin" })
+      .then(function (r) { return r.json(); })
+      .then(function (d) {
+        if (d.state === "ready") return done(true);
+        if (d.state === "failed" || tries > 60) return done(false);
+        setTimeout(poll, 4000);
+      })
+      .catch(function () { if (tries < 60) setTimeout(poll, 5000); else done(false); });
+  }
+  setTimeout(poll, 3000);
+})();
+</script>
+{% endblock %}

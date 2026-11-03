@@ -90,7 +90,10 @@ def send_login_code(phone):
     """
     reader = find_reader_by_phone(phone)
     if not reader:
-        return False, "Bu raqam bo'yicha kitobxon topilmadi. Kutubxonachiga murojaat qiling."
+        return False, (
+            "Bu raqam kutubxona bazasida yo'q. Telegram botimizga /start yuboring — "
+            "u yerda 1 daqiqada ro'yxatdan o'tib, kabinetga kirasiz."
+        )
     if reader.status == ReaderStatus.BLOCKED:
         return False, "Hisobingiz bloklangan. Kutubxonachiga murojaat qiling."
 

@@ -650,3 +650,82 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--b
   * { transition: none !important; }
   .btn:active { transform: none; }
 }
+
+/* ---------------------------------------------------------------- Kitob turlari */
+.kinds {
+  display: grid; grid-auto-flow: column; grid-auto-columns: minmax(108px, max-content);
+  gap: 8px; overflow-x: auto; padding: 2px 0 10px; scrollbar-width: none;
+}
+.kinds::-webkit-scrollbar { display: none; }
+.kind {
+  display: flex; flex-direction: column; gap: 2px;
+  background: var(--card); border: 1px solid var(--line); border-radius: 13px;
+  padding: 9px 13px; color: var(--ink); box-shadow: var(--shadow-sm);
+}
+.kind .kn { font-size: .84rem; font-weight: 650; white-space: nowrap; }
+.kind .kc { font-size: .72rem; color: var(--muted); font-variant-numeric: tabular-nums; }
+.kind.on { background: var(--navy); border-color: var(--navy); color: #fff; }
+.kind.on .kc { color: rgba(255, 255, 255, .75); }
+
+/* ---------------------------------------------------------------- Kitob joyi */
+.where {
+  margin-top: 13px; padding: 12px 13px; border-radius: 12px;
+  background: var(--blue-soft); color: var(--blue-ink);
+}
+.where-t { font-size: .74rem; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; margin-bottom: 8px; }
+.where-steps { display: flex; align-items: center; gap: 7px; flex-wrap: wrap; }
+.where-steps .step {
+  background: var(--card); color: var(--ink); border-radius: 10px; padding: 6px 11px;
+  display: flex; flex-direction: column; align-items: center; min-width: 58px;
+  box-shadow: var(--shadow-sm);
+}
+.where-steps .k { font-size: .66rem; color: var(--muted); text-transform: uppercase; letter-spacing: .05em; }
+.where-steps .v { font-size: 1.08rem; font-weight: 750; font-variant-numeric: tabular-nums; }
+.where-steps .arr { font-size: 1.2rem; opacity: .6; }
+
+.take-form { margin-top: 13px; display: grid; gap: 7px; }
+.select {
+  width: 100%; padding: 11px 12px; font-size: .95rem; font-family: inherit;
+  border: 1.5px solid var(--line); border-radius: 11px;
+  background: var(--card); color: var(--ink);
+}
+
+/* ---------------------------------------------------------------- So'rovlar, testlar */
+.req { display: flex; gap: 11px; align-items: center; padding: 11px 0; border-bottom: 1px solid var(--line-2); }
+.req:last-child { border-bottom: 0; padding-bottom: 0; }
+.req:first-child { padding-top: 0; }
+.req .body { flex: 1; min-width: 0; }
+.req .t { font-weight: 650; font-size: .92rem; line-height: 1.3; }
+.req .d { font-size: .76rem; color: var(--muted); margin-top: 2px; }
+.pulse { width: 9px; height: 9px; border-radius: 50%; background: var(--amber); flex: none;
+         box-shadow: 0 0 0 0 rgba(180, 112, 29, .5); animation: pulse 1.8s infinite; }
+@keyframes pulse { 70% { box-shadow: 0 0 0 9px rgba(180, 112, 29, 0); } 100% { box-shadow: 0 0 0 0 rgba(180, 112, 29, 0); } }
+
+.own { display: flex; gap: 12px; align-items: center; padding: 12px 0; border-bottom: 1px solid var(--line-2); }
+.own:last-child { border-bottom: 0; padding-bottom: 0; }
+.own:first-child { padding-top: 0; }
+.own .body { flex: 1; min-width: 0; }
+.own .t { font-weight: 650; font-size: .93rem; line-height: 1.3; }
+.own .d { font-size: .76rem; color: var(--muted); margin-top: 2px; }
+.own form { flex: none; }
+
+/* AI tahlili */
+.insight { border-left: 4px solid var(--blue); }
+.insight .head { display: flex; align-items: center; gap: 9px; margin-bottom: 9px; }
+.insight .badge-ai {
+  font-size: .68rem; font-weight: 750; letter-spacing: .06em; text-transform: uppercase;
+  background: var(--blue-soft); color: var(--blue-ink); padding: 3px 8px; border-radius: 20px;
+}
+.insight ol { padding-left: 22px; margin: 8px 0 0; list-style: decimal; }
+.insight ol li { padding: 4px 0; font-size: .92rem; line-height: 1.45; }
+.insight .advice { margin-top: 11px; padding: 10px 12px; background: var(--card-2); border-radius: 10px; font-size: .88rem; }
+.thinking { display: flex; gap: 10px; align-items: center; color: var(--muted); font-size: .9rem; }
+.spinner {
+  width: 18px; height: 18px; flex: none; border-radius: 50%;
+  border: 2.5px solid var(--line); border-top-color: var(--blue); animation: spin .9s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .spinner, .pulse { animation: none; } }
+
+/* Umumiy input uslubi qidiruv maydonining chekinishini bosib ketmasin */
+.search input[type="search"] { padding: 13px 52px 13px 42px; }

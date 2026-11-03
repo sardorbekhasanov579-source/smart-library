@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+{% load library_extras %}
+{% block title %}Javonlar — {{ LIBRARY_NAME }}{% endblock %}
+{% block page_title %}Javonlar xaritasi{% endblock %}
+
+{% block content %}
+<div class="toolbar">
+  <span class="strong">{{ placed|spaced }} / {{ total|spaced }} kitobning joyi belgilangan ({{ percent }}%)</span>
+  <span class="spacer"></span>
+  {% if can_manage %}
+    <a href="{% url 'books:bulk_import' %}?rejim=joy" class="btn btn-primary">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 15.5V4"/><path d="M8 8l4-4 4 4"/><path d="M5 16v2.5A2.5 2.5 0 007.5 21h9a2.5 2.5 0 002.5-2.5V16"/></svg>
+      Joylashuvni Excel'dan yuklash
+    </a>
+  {% endif %}
+</div>
+
+<div class="card mb-2">
+  <div class="card-body">
+    <div class="place-bar"><span style="width:{{ percent }}%"></span></div>
+    <div class="small muted" style="margin-top:8px">
+      Tuzilma: <b>Xona</b> → <b>qator</b> (A, B, C …) → <b>javon</b> (1A, 2A …) → <b>taxcha</b> (1, 2, 3 …).
+      Javonni bosib, undagi kitoblarni taxchalar bo'yicha ko'ring.
+      {% if unplaced %}Joyi belgilanmagan: <b>{{ unplaced|spaced }}</b> ta kitob.{% endif %}
+    </div>
+  </div>
+</div>
+
+{% for room in rooms %}
+  <div class="card mb-2">
+    <div class="card-head">
+      <h2>{% if room.number %}{{ room.number }}-xona{% else %}Xonasi ko'rsatilmagan{% endif %}</h2>
+      <span class="small muted">{{ room.shelves }} javon · {{ room.books|spaced }} kitob</span>
+    </div>
+    <div class="card-body">
+      {% if room.letters %}
+        {% for row in room.letters %}
+          <div class="shelf-row">
+            <div class="shelf-letter">{{ row.letter }}</div>
+            <div class="shelf-tiles">
+              {% for s in row.shelves %}
+                <a class="shelf-tile" href="{% url 'books:shelf_detail' room.number s.shelf %}">
+                  <b>{{ s.shelf }}</b><span>{{ s.n }}</span>
+                </a>
+              {% endfor %}
+            </div>
+          </div>
+        {% endfor %}
+      {% else %}
+        <div class="small muted">Bu xonada hali birorta kitobning joyi yozilmagan.</div>
+      {% endif %}
+    </div>
+  </div>
+{% endfor %}
+{% endblock %}

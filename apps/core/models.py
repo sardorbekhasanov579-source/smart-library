@@ -109,6 +109,7 @@ class SystemSetting(models.Model):
              "Kutubxona telefon raqami (kitobxon ilovasida ko'rinadi)"),
             ("library_hours", "",
              "Ish vaqti, masalan: Du-Sha 9:00-18:00 (kitobxon ilovasida ko'rinadi)"),
+            ("library_rooms", "3", "Kutubxonadagi xonalar soni (javonlar xaritasi uchun)"),
             ("loan_days", "14", "Kitob berish muddati (kun)"),
             ("max_books_per_reader", "5", "Bir kitobxonga bir vaqtda beriladigan kitoblar soni"),
             ("fine_per_day", "0", "Kechikkan har bir kun uchun jarima (so'm)"),

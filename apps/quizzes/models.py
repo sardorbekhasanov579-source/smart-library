@@ -305,6 +305,9 @@ class Attempt(models.Model):
     passed = models.BooleanField("O'tdi", default=False)
     started_at = models.DateTimeField("Boshlangan", default=timezone.now)
     finished_at = models.DateTimeField("Yakunlangan", null=True, blank=True)
+    # Xato javoblar tahlili: {"status": "pending|done|failed", "summary": "...",
+    #  "topics": [...], "advice": "...", "source": "ai|fallback"}
+    ai_feedback = models.JSONField("AI tahlili", default=dict, blank=True)
 
     class Meta:
         db_table = "quiz_attempts"
@@ -417,6 +420,34 @@ class TelegramAccount(models.Model):
 
     def __str__(self):
         return f"{self.reader.full_name} (@{self.username or self.chat_id})"
+
+
+class TelegramRegistration(models.Model):
+    """Bazada yo'q odamning bot orqali ro'yxatdan o'tish jarayoni.
+
+    Telefon raqam yuborilgach shu yozuv ochiladi, keyin bot F.I.Sh. va
+    kitobxon turini so'raydi. Tugagach kitobxon yaratiladi, yozuv o'chiriladi.
+    """
+
+    STEP_NAME = "name"
+    STEP_TYPE = "type"
+
+    chat_id = models.BigIntegerField("Telegram chat ID", unique=True)
+    phone = models.CharField("Telefon", max_length=32)
+    step = models.CharField("Qadam", max_length=16, default=STEP_NAME)
+    full_name = models.CharField("F.I.Sh.", max_length=200, blank=True)
+    username = models.CharField("Telegram username", max_length=64, blank=True)
+    first_name = models.CharField("Ism", max_length=100, blank=True)
+    created_at = models.DateTimeField("Boshlangan", default=timezone.now)
+    updated_at = models.DateTimeField("Yangilangan", auto_now=True)
+
+    class Meta:
+        db_table = "telegram_registrations"
+        verbose_name = "Bot orqali ro'yxatdan o'tish"
+        verbose_name_plural = "Bot orqali ro'yxatdan o'tishlar"
+
+    def __str__(self):
+        return f"{self.phone} ({self.step})"
 
 
 class OtpCode(models.Model):

@@ -22,6 +22,55 @@
   </div>
 </section>
 
+{# --------------------------------------------- O'zi tanlab test topshirish #}
+<div class="section-title">
+  <span>Kitobni tanlab test topshiring</span>
+  <span class="line"></span>
+</div>
+<div class="card">
+  {% if own_books %}
+    {% for item in own_books %}
+      <div class="own">
+        <div class="body">
+          <div class="t">{{ item.book.title }}</div>
+          <div class="d">
+            {{ item.book.author.full_name }}
+            · {% if item.loan.return_date %}qaytarilgan {{ item.loan.return_date|date:"d.m.Y" }}{% else %}qo'lingizda{% endif %}
+          </div>
+          <div class="meta-row" style="margin-top:6px">
+            {% if item.state == 'passed' %}
+              <span class="chip ok">O'tdi — {{ item.assignment.best_percent }}%</span>
+            {% elif item.state == 'failed' %}
+              <span class="chip bad">O'tmadi — {{ item.assignment.best_percent }}%</span>
+            {% elif item.state == 'open' %}
+              <span class="chip warn">Boshlangan</span>
+            {% endif %}
+          </div>
+        </div>
+        {% if item.state == 'new' or item.state == 'open' %}
+          <form method="post" action="{% url 'quizzes:reader_quiz_start' item.loan.pk %}">
+            {% csrf_token %}
+            <button class="btn btn-primary btn-sm" type="submit">{% if item.state == 'open' %}Davom etish{% else %}Testni boshlash{% endif %}</button>
+          </form>
+        {% elif item.assignment %}
+          <a class="btn btn-light btn-sm" href="{% url 'quizzes:result' item.assignment.token %}">Natija</a>
+        {% endif %}
+      </div>
+    {% endfor %}
+  {% else %}
+    <div class="empty" style="padding:18px 8px">
+      <div class="t">Hali kitob olmagansiz</div>
+      <div class="d">Kitoblar bazasidan kitobni topib «Shu kitobni oldim» deb belgilang. Kutubxonachi tasdiqlagach shu yerda test paydo bo'ladi.</div>
+      <a class="btn btn-light mt" href="{% url 'quizzes:reader_books' %}">Kitoblar bazasi</a>
+    </div>
+  {% endif %}
+</div>
+
+<div class="section-title">
+  <span>Barcha testlarim</span>
+  <span class="line"></span>
+</div>
+
 <div class="seg">
   <a href="?holat=faol" class="{% if shown == 'faol' %}on{% endif %}">
     Faol <span class="n">{{ open_count }}</span>
@@ -109,7 +158,7 @@
       </svg>
       {% if shown == 'faol' %}
         <div class="t">Ishlanmagan test yo'q</div>
-        <div class="d">Kitob qaytarish muddatiga bir kun qolganda test o'zi Telegramga keladi.</div>
+        <div class="d">Yuqoridagi ro'yxatdan kitobni tanlab, testni hoziroq boshlashingiz mumkin.</div>
       {% elif shown == 'yakunlangan' %}
         <div class="t">Hali yakunlangan test yo'q</div>
         <div class="d">Birinchi testni ishlaganingizdan keyin natijalar shu yerda turadi.</div>
@@ -130,6 +179,8 @@
     <div class="d">
       Savollar siz olgan kitob bo'yicha tuziladi. Natija {{ quiz_pass_percent|default:70 }}% dan
       yuqori bo'lsa kitob «o'qilgan» deb belgilanadi va faollik balli qo'shiladi.
+      Xato qilsangiz, sun'iy intellekt qaysi mavzularni qayta o'qish kerakligini aytadi
+      va testni yana bir marta ishlash imkoni beriladi.
     </div>
   </div>
 </div>

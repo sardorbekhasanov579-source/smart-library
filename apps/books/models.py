@@ -37,6 +37,14 @@ class Book(models.Model):
     publication_year = models.PositiveIntegerField("Nashr yili", null=True, blank=True)
     total_quantity = models.PositiveIntegerField("Jami nusxa", default=0)
     available_quantity = models.PositiveIntegerField("Mavjud nusxa", default=0)
+    # Joylashuv: Xona -> Javon (1A, 2B ...) -> Taxcha. `shelf_location` shu
+    # uchtasidan avtomatik yig'iladi (apps/books/location.py).
+    room = models.PositiveSmallIntegerField("Xona", null=True, blank=True)
+    shelf = models.CharField(
+        "Javon", max_length=8, blank=True,
+        help_text="Qator harfi bilan: 1A, 2A ... 1B, 2B",
+    )
+    tier = models.PositiveSmallIntegerField("Taxcha", null=True, blank=True)
     shelf_location = models.CharField("Javon manzili", max_length=50, blank=True)
     description = models.TextField("Tavsif", blank=True)
     price = models.CharField(
@@ -54,6 +62,7 @@ class Book(models.Model):
         indexes = [
             models.Index(fields=["title"]),
             models.Index(fields=["isbn"]),
+            models.Index(fields=["room", "shelf"]),
         ]
 
     def __str__(self):
@@ -61,6 +70,62 @@ class Book(models.Model):
 
     def get_absolute_url(self):
         return reverse("books:detail", args=[self.pk])
+
+    # -- Joylashuv -----------------------------------------------------------
+    LOCATION_FIELDS = ("room", "shelf", "tier", "shelf_location")
+
+    @classmethod
+    def from_db(cls, db, field_names, values):
+        instance = super().from_db(db, field_names, values)
+        data = instance.__dict__
+        instance._loaded_location = tuple(data.get(f) for f in cls.LOCATION_FIELDS)
+        return instance
+
+    def sync_location(self):
+        """Tuzilgan maydonlar va `shelf_location` matnini moslashtiradi.
+
+        Qaysi biri o'zgartirilgan bo'lsa o'sha ustun turadi:
+          * xona/javon/taxcha o'zgargan bo'lsa — matn qayta yig'iladi;
+          * faqat matn o'zgargan bo'lsa (Excel, eski buyruqlar) — matndan
+            xona/javon/taxcha ajratib olinadi.
+        """
+        from apps.books.location import format_location, normalize_shelf, parse_location
+
+        self.shelf = normalize_shelf(self.shelf) if self.shelf else ""
+        loaded = getattr(self, "_loaded_location", None)
+        structured_now = (self.room, self.shelf, self.tier)
+        structured_changed = loaded is None or structured_now != loaded[:3]
+        text_changed = loaded is None or (self.shelf_location or "") != (loaded[3] or "")
+
+        has_structure = bool(self.room or self.shelf or self.tier)
+        if has_structure and (structured_changed or not text_changed):
+            self.shelf_location = format_location(self.room, self.shelf, self.tier)
+            return
+        if text_changed or not has_structure:
+            parsed = parse_location(self.shelf_location)
+            if parsed:
+                self.room = parsed["room"]
+                self.shelf = parsed["shelf"]
+                self.tier = parsed["tier"]
+                self.shelf_location = format_location(self.room, self.shelf, self.tier)
+            elif text_changed or not (self.shelf_location or "").strip():
+                # Tushunib bo'lmaydigan yangi matn — eski tuzilma endi noto'g'ri
+                self.room, self.shelf, self.tier = None, "", None
+
+    def save(self, *args, **kwargs):
+        update_fields = kwargs.get("update_fields")
+        if update_fields is None or set(update_fields) & set(self.LOCATION_FIELDS):
+            self.sync_location()
+            if update_fields is not None:
+                kwargs["update_fields"] = list(
+                    set(update_fields) | set(self.LOCATION_FIELDS)
+                )
+        super().save(*args, **kwargs)
+        self._loaded_location = tuple(getattr(self, f) for f in self.LOCATION_FIELDS)
+
+    @property
+    def location_text(self):
+        return self.shelf_location
 
     @property
     def issued_quantity(self):

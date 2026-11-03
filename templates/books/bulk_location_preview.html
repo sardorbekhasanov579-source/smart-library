@@ -1,0 +1,107 @@
+{% extends "base.html" %}
+{% block title %}Joylashuv tahlili — {{ LIBRARY_NAME }}{% endblock %}
+{% block page_title %}Joylashuv tahlili{% endblock %}
+
+{% block content %}
+<div class="card" style="max-width:960px">
+  <div class="card-head"><h2>{{ filename }}</h2></div>
+  <div class="card-body">
+
+    <div class="stat-grid">
+      <div class="stat">
+        <div class="icon i-green">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6.5L9.5 17.5l-5-5"/></svg>
+        </div>
+        <div><div class="value">{{ result.books_count }}</div><div class="label">Kitobga joy yoziladi</div></div>
+      </div>
+      <div class="stat">
+        <div class="icon i-blue">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 4.5h9l3 3V19a1 1 0 01-1 1H6a1 1 0 01-1-1V5.5a1 1 0 011-1z"/><path d="M9 9.5h6"/><path d="M9 13h6"/></svg>
+        </div>
+        <div><div class="value">{{ result.matched }}</div><div class="label">Qator topildi</div></div>
+      </div>
+      <div class="stat">
+        <div class="icon i-red">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/><path d="M8.5 8.5l5 5"/><path d="M13.5 8.5l-5 5"/></svg>
+        </div>
+        <div><div class="value">{{ result.missing_count }}</div><div class="label">Bazada topilmadi</div></div>
+      </div>
+      {% if result.no_location %}
+        <div class="stat">
+          <div class="icon i-amber">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7.5v5"/><path d="M12 16.2v.3"/></svg>
+          </div>
+          <div><div class="value">{{ result.no_location }}</div><div class="label">Joyi yozilmagan qator</div></div>
+        </div>
+      {% endif %}
+    </div>
+
+    <div class="small muted" style="margin-bottom:14px">
+      <b>Tanilgan ustunlar:</b>
+      {% for field, label in result.column_labels.items %}
+        <span class="badge badge-blue" style="margin-right:6px">{{ label }}</span>
+      {% endfor %}
+    </div>
+
+    {% if result.preview %}
+      <h3 class="small strong" style="margin:4px 0 8px">Topilganlar (birinchi {{ result.preview|length }} tasi)</h3>
+      <div class="table-wrap">
+        <table class="data">
+          <thead><tr><th class="num">Qator</th><th>Kitob</th><th>Inventar</th><th>Joyi</th><th>Mos kitob</th></tr></thead>
+          <tbody>
+          {% for row in result.preview %}
+            <tr>
+              <td class="num">{{ row.row_number }}</td>
+              <td><b>{{ row.title|default:"—" }}</b>{% if row.author %}<div class="small muted">{{ row.author }}</div>{% endif %}</td>
+              <td class="small nowrap">{{ row.inventory|default:"—" }}</td>
+              <td><span class="badge badge-green">{{ row.location }}</span></td>
+              <td class="small">{{ row.book_ids|length }} ta{% if row.copy_id %} (nusxa){% endif %}</td>
+            </tr>
+          {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% endif %}
+
+    {% if result.missing %}
+      <h3 class="small strong" style="margin:18px 0 8px">Bazada topilmagan kitoblar</h3>
+      <div class="msg msg-warning" style="margin-bottom:10px">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7.5v5"/><path d="M12 16.2v.3"/></svg>
+        <span>Bu qatorlar o'tkazib yuboriladi. Nomini bazadagidek yozing yoki inventar raqamini qo'shing.</span>
+      </div>
+      <div class="table-wrap">
+        <table class="data">
+          <thead><tr><th class="num">Qator</th><th>Kitob</th><th>Inventar</th><th>Joyi</th></tr></thead>
+          <tbody>
+          {% for row in result.missing %}
+            <tr>
+              <td class="num">{{ row.row_number }}</td>
+              <td>{{ row.title|default:"—" }}{% if row.author %}<div class="small muted">{{ row.author }}</div>{% endif %}</td>
+              <td class="small nowrap">{{ row.inventory|default:"—" }}</td>
+              <td class="small">{{ row.location }}</td>
+            </tr>
+          {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% if result.missing_count > result.missing|length %}
+        <div class="small muted" style="margin-top:8px">… va yana {{ result.missing_count|add:"-40" }} ta.</div>
+      {% endif %}
+    {% endif %}
+
+    <div class="form-actions">
+      {% if result.matched %}
+        <form method="post" action="{% url 'books:bulk_import_confirm' token=token %}">
+          {% csrf_token %}
+          <input type="hidden" name="mode" value="joy">
+          <button class="btn btn-primary" type="submit">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6.5L9.5 17.5l-5-5"/></svg>
+            {{ result.books_count }} ta kitobga joyni yozish
+          </button>
+        </form>
+      {% endif %}
+      <a href="{% url 'books:bulk_import' %}?rejim=joy" class="btn btn-light">Boshqa fayl tanlash</a>
+    </div>
+  </div>
+</div>
+{% endblock %}

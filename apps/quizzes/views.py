@@ -7,6 +7,7 @@ Ikki qism bor:
     hamda telefon + kod bilan shaxsiy kabinetga kirish.
 """
 import logging
+from datetime import timedelta
 
 from django.contrib import messages
 from django.core.paginator import Paginator
@@ -20,7 +21,7 @@ from django.views.generic import DetailView, ListView, TemplateView, View
 from apps.books.models import Book, BookCopy
 from apps.core.mixins import AdminRequiredMixin, LibrarianRequiredMixin
 from apps.core.models import SystemSetting
-from apps.quizzes import ai, telegram
+from apps.quizzes import ai, selfservice, telegram
 from apps.quizzes.forms import (
     AssignmentCreateForm,
     CodeForm,
@@ -46,6 +47,7 @@ from apps.quizzes.services import (
     send_login_code,
 )
 from apps.quizzes.utils import pretty_phone
+from apps.loans.models import BorrowRequest
 from apps.readers.models import Reader
 
 logger = logging.getLogger(__name__)
@@ -578,6 +580,8 @@ class TakeQuizView(View):
         except Exception:  # pragma: no cover
             logger.exception("Natija adminga yuborilmadi: %s", assignment.pk)
         self.notify_reader(assignment, attempt)
+        if attempt.correct_count < attempt.total_questions:
+            selfservice.analyze_attempt_async(attempt)  # xatolar tahlili fonda
         return redirect("quizzes:result", token=token)
 
     @staticmethod
@@ -624,6 +628,7 @@ class QuizResultView(View):
                 .prefetch_related("question__choices")
                 .order_by("question__order", "question_id")
             )
+        feedback = (attempt.ai_feedback or {}) if attempt else {}
         return render(
             request,
             "quizzes/result.html",
@@ -631,9 +636,24 @@ class QuizResultView(View):
                 "assignment": assignment,
                 "attempt": attempt,
                 "answers": answers,
+                "feedback": feedback,
+                "feedback_pending": feedback.get("status") == "pending",
                 "show_answers": SystemSetting.get("quiz_show_answers", "1") == "1",
+                "in_cabinet": request.session.get(SESSION_KEY) == assignment.reader_id,
             },
         )
+
+
+class QuizFeedbackStatusView(View):
+    """Natija sahifasi AI tahlili tayyor bo'lganini shu orqali biladi."""
+
+    def get(self, request, token):
+        assignment = get_object_or_404(Assignment, token=token)
+        attempt = assignment.attempts.filter(finished_at__isnull=False).order_by(
+            "-finished_at"
+        ).first()
+        status = ((attempt.ai_feedback or {}).get("status") if attempt else None) or "none"
+        return JsonResponse({"status": status})
 
 
 # ===========================================================================
@@ -796,6 +816,18 @@ class ReaderPortalView(ReaderPageMixin, View):
         # Ijtimoiy faollik balli va reytingdagi o'rni (ikki so'rov)
         points, rank = self._activity(reader)
 
+        pending_requests = list(
+            reader.borrow_requests.select_related("book__author", "copy")
+            .filter(status=BorrowRequest.Status.PENDING)
+        )
+        recent_rejected = list(
+            reader.borrow_requests.select_related("book")
+            .filter(
+                status=BorrowRequest.Status.REJECTED,
+                decided_at__gte=timezone.now() - timedelta(days=3),
+            )[:3]
+        )
+
         return render(
             request,
             self.template_name,
@@ -811,6 +843,8 @@ class ReaderPortalView(ReaderPageMixin, View):
                 rank=rank,
                 level=reader.level,
                 max_books=reader.book_limit,
+                pending_requests=pending_requests,
+                recent_rejected=recent_rejected,
             ),
         )
 
@@ -870,8 +904,12 @@ class ReaderBooksView(ReaderPageMixin, View):
     def get(self, request):
         query = (request.GET.get("q") or "").strip()
         only = (request.GET.get("holat") or "").strip()  # "" | "mavjud"
+        kinds = book_kinds()
+        kind = next((k for k in kinds if str(k["id"]) == request.GET.get("tur", "")), None)
 
-        books = Book.objects.select_related("author", "category")
+        books = Book.objects.select_related("author", "category", "category__parent")
+        if kind:
+            books = books.filter(category_id__in=kind["ids"])
         if query:
             books = books.filter(
                 Q(title__icontains=query)
@@ -886,10 +924,10 @@ class ReaderBooksView(ReaderPageMixin, View):
         books = books.order_by("title")
 
         # Qidiruv bo'lmasa butun fondni emas, faqat yangi qo'shilganlarini
-        if not query and not only:
-            books = Book.objects.select_related("author", "category").order_by(
-                "-created_at"
-            )
+        if not query and not only and not kind:
+            books = Book.objects.select_related(
+                "author", "category", "category__parent"
+            ).order_by("-created_at")
 
         paginator = Paginator(books, self.per_page)
         page = paginator.get_page(request.GET.get("sahifa"))
@@ -904,19 +942,103 @@ class ReaderBooksView(ReaderPageMixin, View):
             for copy in copies:
                 copies_by_book.setdefault(copy.book_id, []).append(copy)
 
+        reader = self.reader
         return render(
             request,
             self.template_name,
             self.page_context(
                 query=query,
                 only=only,
+                kinds=kinds,
+                kind=kind,
                 page=page,
                 total=paginator.count,
                 copies_by_book=copies_by_book,
-                is_search=bool(query or only),
+                is_search=bool(query or only or kind),
                 fond_total=Book.objects.count(),
+                requested_ids=set(
+                    reader.borrow_requests.filter(
+                        status=BorrowRequest.Status.PENDING
+                    ).values_list("book_id", flat=True)
+                ),
+                holding_ids=set(
+                    reader.active_loans.values_list("copy__book_id", flat=True)
+                ),
+                can_request=reader.can_borrow,
             ),
         )
+
+
+def book_kinds():
+    """Kitob turlari (yuqori toifalar) va ulardagi kitoblar soni. 10 daqiqa keshlanadi."""
+    from django.core.cache import cache
+
+    from apps.catalog.kinds import GROUP_NAMES
+    from apps.catalog.models import Category
+
+    cached = cache.get("reader_book_kinds")
+    if cached is not None:
+        return cached
+
+    children = {}
+    for pk, parent_id in Category.objects.values_list("id", "parent_id"):
+        children.setdefault(parent_id, []).append(pk)
+
+    def subtree(pk):
+        ids, stack = [], [pk]
+        while stack:
+            current = stack.pop()
+            ids.append(current)
+            stack.extend(children.get(current, []))
+        return ids
+
+    counts = dict(
+        Book.objects.values_list("category_id").annotate(n=Count("id")).values_list(
+            "category_id", "n"
+        )
+    )
+    order = {name: i for i, name in enumerate(GROUP_NAMES)}
+    kinds = []
+    for top in Category.objects.filter(parent__isnull=True):
+        ids = subtree(top.pk)
+        total = sum(counts.get(i, 0) for i in ids)
+        if total:
+            label = top.name.replace(" adabiyoti", "").replace(" adabiyot", "")
+            kinds.append({"id": top.pk, "name": top.name, "label": label, "ids": ids, "count": total})
+    kinds.sort(key=lambda k: (order.get(k["name"], 50), k["name"]))
+    cache.set("reader_book_kinds", kinds, 600)
+    return kinds
+
+
+class ReaderBorrowView(ReaderPageMixin, View):
+    """«Shu kitobni oldim» — kutubxonachiga tasdiqlash uchun so'rov."""
+
+    def post(self, request, book_id):
+        from apps.loans.requests import create_request
+
+        book = get_object_or_404(Book, pk=book_id)
+        copy = None
+        copy_id = request.POST.get("nusxa")
+        if copy_id and copy_id.isdigit():
+            copy = BookCopy.objects.filter(pk=int(copy_id), book=book).first()
+        ok, message, _req = create_request(self.reader, book, copy)
+        (messages.success if ok else messages.error)(request, message)
+        back = request.POST.get("next") or ""
+        if back.startswith("/") and not back.startswith("//"):
+            return redirect(back)
+        return redirect("quizzes:portal" if ok else "quizzes:reader_books")
+
+
+class ReaderBorrowCancelView(ReaderPageMixin, View):
+    def post(self, request, pk):
+        from apps.loans.requests import cancel_request
+
+        borrow = get_object_or_404(BorrowRequest, pk=pk, reader=self.reader)
+        if cancel_request(borrow, self.reader):
+            messages.success(request, "So'rov bekor qilindi.")
+        else:
+            messages.info(request, "Bu so'rov allaqachon ko'rib chiqilgan.")
+        return redirect("quizzes:portal")
 
 
 class ReaderQuizzesView(ReaderPageMixin, View):
@@ -947,6 +1069,24 @@ class ReaderQuizzesView(ReaderPageMixin, View):
         passed = [a for a in done_list if a.status == AssignmentStatus.PASSED]
         best = max((a.best_percent for a in done_list), default=0)
 
+        # Kitobxon o'zi tanlab test topshiradigan kitoblar
+        by_loan = {}
+        for a in all_assignments:
+            if a.loan_id and a.loan_id not in by_loan:
+                by_loan[a.loan_id] = a
+        own_books = []
+        for loan in selfservice.testable_loans(self.reader):
+            assignment = by_loan.get(loan.pk)
+            if assignment and assignment.status == AssignmentStatus.PASSED:
+                state = "passed"
+            elif assignment and assignment.can_attempt:
+                state = "open"
+            elif assignment and assignment.is_finished:
+                state = "failed"
+            else:
+                state = "new"
+            own_books.append({"loan": loan, "book": loan.copy.book, "assignment": assignment, "state": state})
+
         return render(
             request,
             self.template_name,
@@ -958,10 +1098,69 @@ class ReaderQuizzesView(ReaderPageMixin, View):
                 all_count=len(all_assignments),
                 passed_count=len(passed),
                 best_percent=best,
+                own_books=own_books,
                 now=timezone.now(),
                 quiz_pass_percent=SystemSetting.quiz_pass_percent(),
             ),
         )
+
+
+class ReaderStartQuizView(ReaderPageMixin, View):
+    """Kitobxon olgan kitobini tanlab testni o'zi boshlaydi."""
+
+    def post(self, request, loan_id):
+        loan = get_object_or_404(
+            self.reader.loans.select_related("copy__book__author"), pk=loan_id
+        )
+        state, assignment = selfservice.start_for_loan(self.reader, loan)
+        if state == "ok":
+            return redirect("quizzes:take", token=assignment.token)
+        if state == "done":
+            messages.info(request, "Bu kitob bo'yicha test yakunlangan. Natijani ko'ring.")
+            return redirect("quizzes:result", token=assignment.token)
+        if state == "failed":
+            messages.error(
+                request,
+                "Bu kitob uchun test hali tayyorlanmadi. Kutubxonachiga ayting — "
+                "savollarni qo'shib beradi.",
+            )
+            return redirect("quizzes:reader_quizzes")
+        # Test fonda tayyorlanmoqda — kutish sahifasi
+        return render(
+            request,
+            "quizzes/preparing.html",
+            self.page_context(loan=loan, book=loan.copy.book),
+        )
+
+
+class ReaderQuizStatusView(ReaderPageMixin, View):
+    """Kutish sahifasi uchun: test tayyor bo'ldimi?"""
+
+    def get(self, request, loan_id):
+        loan = get_object_or_404(self.reader.loans.select_related("copy__book"), pk=loan_id)
+        state = selfservice.generation_state(loan.copy.book)
+        if state == "idle":
+            selfservice.prepare_quiz_async(loan.copy.book_id)
+            state = "running"
+        return JsonResponse({"state": state})
+
+
+class ReaderMagicLoginView(View):
+    """Telegram botdagi «Kabinetni ochish» tugmasi — parolsiz kirish."""
+
+    def get(self, request, token):
+        reader = selfservice.reader_from_token(token)
+        if reader is None:
+            messages.error(
+                request,
+                "Havola eskirgan. Telegram botda «📱 Kabinet» tugmasini qayta bosing "
+                "yoki telefon raqam bilan kiring.",
+            )
+            return redirect("quizzes:login")
+        request.session.cycle_key()
+        request.session[SESSION_KEY] = reader.pk
+        request.session.pop(SESSION_PHONE, None)
+        return redirect("quizzes:portal")
 
 
 class ReaderSettingsView(ReaderPageMixin, View):

@@ -123,6 +123,46 @@
   </div>
 {% endif %}
 
+{# -------------------------------------------------- Kutilayotgan so'rovlar #}
+{% if pending_requests %}
+  <div class="section-title">
+    <span>Tasdiq kutilmoqda</span>
+    <span class="line"></span>
+    <span>{{ pending_requests|length }} ta</span>
+  </div>
+  <div class="card">
+    {% for r in pending_requests %}
+      <div class="req">
+        <span class="pulse" aria-hidden="true"></span>
+        <div class="body">
+          <div class="t">{{ r.book.title }}</div>
+          <div class="d">
+            {{ r.created_at|date:"d.m.Y H:i" }} da yuborildi
+            {% if r.copy %} · Inv. {{ r.copy.inventory_number }}{% endif %}
+          </div>
+        </div>
+        <form method="post" action="{% url 'quizzes:reader_borrow_cancel' r.pk %}">
+          {% csrf_token %}
+          <button class="btn btn-danger btn-sm" type="submit">Bekor</button>
+        </form>
+      </div>
+    {% endfor %}
+    <p class="tiny muted mt">Kutubxonachi tasdiqlagach kitob «Qo'limdagi kitoblar»ga o'tadi va Telegramga xabar keladi.</p>
+  </div>
+{% endif %}
+
+{% for r in recent_rejected %}
+  <div class="notice bad">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" aria-hidden="true">
+      <circle cx="12" cy="12" r="9"/><path d="M15 9l-6 6"/><path d="M9 9l6 6"/>
+    </svg>
+    <div>
+      <div class="t">So'rov rad etildi: {{ r.book.title }}</div>
+      <div class="d">{{ r.reject_reason|default:"Batafsil kutubxonachidan so'rang." }}</div>
+    </div>
+  </div>
+{% endfor %}
+
 {# ----------------------------------------------------- Qo'limdagi kitoblar #}
 <div class="section-title">
   <span>Qo'limdagi kitoblar</span>
@@ -155,8 +195,12 @@
           <div class="meta-row">
             <span class="chip plain">{{ loan.due_date|date:"d.m.Y" }} gacha</span>
             <span class="chip plain">Inv. {{ loan.copy.inventory_number }}</span>
-            {% if loan.shelf %}<span class="chip shelf">Javon: {{ loan.shelf }}</span>{% endif %}
+            {% if loan.shelf %}<span class="chip shelf">{{ loan.shelf }}</span>{% endif %}
           </div>
+          <form method="post" action="{% url 'quizzes:reader_quiz_start' loan.pk %}" style="margin-top:10px">
+            {% csrf_token %}
+            <button class="btn btn-light btn-sm" type="submit">O'qib bo'ldim — testni boshlash</button>
+          </form>
         </div>
       </div>
     {% endfor %}
@@ -167,7 +211,7 @@
         <path d="M20 5.5A1.5 1.5 0 0018.5 4H14v16h4.5A1.5 1.5 0 0020 18.5v-13z"/>
       </svg>
       <div class="t">Hozir qo'lingizda kitob yo'q</div>
-      <div class="d">Kutubxona fondidan kerakli kitobni topib, kutubxonachiga ayting.</div>
+      <div class="d">Kitoblar bazasidan kitobni toping va «Shu kitobni oldim» tugmasini bosing.</div>
       <a class="btn btn-light mt" href="{% url 'quizzes:reader_books' %}">Kitob qidirish</a>
     </div>
   {% endif %}

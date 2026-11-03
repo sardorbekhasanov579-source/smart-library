@@ -15,4 +15,7 @@ python manage.py migrate --no-input
 echo "--> Administrator tekshirilmoqda"
 python manage.py ensure_admin
 
+echo "--> Telegram webhook yangilanmoqda (tugmalar ishlashi uchun)"
+python manage.py set_telegram_webhook || echo "    (o'tkazib yuborildi: bot sozlanmagan)"
+
 echo "--> Tayyor"

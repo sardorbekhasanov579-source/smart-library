@@ -1,6 +1,9 @@
 """2-modul: Kitoblar - kitoblar va nusxalarni boshqarish."""
+import logging
+
 from django.contrib import messages
 from django.db.models import Count, Q
+from django.http import Http404
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse, reverse_lazy
 from django.views.generic import (
@@ -15,6 +18,8 @@ from apps.books.models import Book, BookCopy, CopyStatus
 from apps.catalog.models import Author, Category
 from apps.core.mixins import AnyRoleMixin, AuditLogMixin, LibrarianRequiredMixin
 from apps.core.models import AuditLog
+
+logger = logging.getLogger(__name__)
 
 
 class BookListView(AnyRoleMixin, ListView):
@@ -231,6 +236,9 @@ class BookCopyDeleteView(LibrarianRequiredMixin, View):
         return redirect(book.get_absolute_url())
 
 
+# ===========================================================================
+# Excel orqali ommaviy qo'shish / joylashuv yuklash
+# ===========================================================================
 class BookBulkImportView(LibrarianRequiredMixin, View):
     """1-bosqich: Excel faylni yuklash va tahlil natijasini ko'rsatish.
 
@@ -241,45 +249,67 @@ class BookBulkImportView(LibrarianRequiredMixin, View):
     template_name = "books/bulk_import.html"
 
     def get(self, request):
-        return render(request, self.template_name, {"form": BookBulkImportForm()})
+        initial = {"mode": request.GET.get("rejim") or bulk_import.MODE_NEW}
+        return render(request, self.template_name, {"form": BookBulkImportForm(initial=initial)})
+
+    def _fail(self, request, token, text, mode):
+        bulk_import.discard_temp_file(token)
+        messages.error(request, text)
+        form = BookBulkImportForm(initial={"mode": mode})
+        return render(request, self.template_name, {"form": form})
 
     def post(self, request):
         form = BookBulkImportForm(request.POST, request.FILES)
         if not form.is_valid():
             return render(request, self.template_name, {"form": form})
 
+        mode = form.cleaned_data["mode"]
         uploaded = form.cleaned_data["file"]
         token = bulk_import.save_temp_file(uploaded)
         path = bulk_import.temp_file_path(token)
 
         try:
-            parsed = bulk_import.parse_workbook(path)
+            if mode == bulk_import.MODE_LOCATION:
+                parsed = bulk_import.parse_locations(path)
+            else:
+                parsed = bulk_import.parse_workbook(path)
         except Exception:
-            bulk_import.discard_temp_file(token)
-            messages.error(
-                request,
-                "Faylni o'qib bo'lmadi. Excel (.xlsx) fayl ekanini tekshiring.",
+            logger.exception("Excel tahlilida xato")
+            return self._fail(
+                request, token,
+                "Faylni o'qib bo'lmadi. Excel (.xlsx) fayl ekanini tekshiring.", mode,
             )
-            return render(request, self.template_name, {"form": BookBulkImportForm()})
 
-        if parsed["missing_title"]:
-            bulk_import.discard_temp_file(token)
-            messages.error(
-                request,
-                "Faylda kitob nomi ustuni topilmadi. Ustun sarlavhasida "
-                "\"nomi\" yoki \"kitob\" so'zi bo'lishi kerak.",
-            )
-            return render(request, self.template_name, {"form": BookBulkImportForm()})
-
-        if parsed["total"] == 0:
-            bulk_import.discard_temp_file(token)
-            messages.error(request, "Faylda to'ldirilgan qator topilmadi.")
-            return render(request, self.template_name, {"form": BookBulkImportForm()})
+        if mode == bulk_import.MODE_LOCATION:
+            if parsed["missing_key"]:
+                return self._fail(
+                    request, token,
+                    "Kitobni aniqlaydigan ustun topilmadi. Sarlavhada «kitob nomi» "
+                    "yoki «inventar» so'zi bo'lishi kerak.", mode,
+                )
+            if parsed["missing_location"]:
+                return self._fail(
+                    request, token,
+                    "Joylashuv ustuni topilmadi. Sarlavhalarda «xona», «javon» va "
+                    "«taxcha» so'zlari bo'lishi kerak.", mode,
+                )
+            if parsed["total"] == 0:
+                return self._fail(request, token, "Faylda to'ldirilgan qator topilmadi.", mode)
+            template = "books/bulk_location_preview.html"
+        else:
+            if parsed["missing_title"]:
+                return self._fail(
+                    request, token,
+                    "Faylda kitob nomi ustuni topilmadi. Ustun sarlavhasida "
+                    "\"nomi\" yoki \"kitob\" so'zi bo'lishi kerak.", mode,
+                )
+            if parsed["total"] == 0:
+                return self._fail(request, token, "Faylda to'ldirilgan qator topilmadi.", mode)
+            template = "books/bulk_import_preview.html"
 
         return render(
-            request,
-            "books/bulk_import_preview.html",
-            {"token": token, "result": parsed, "filename": uploaded.name},
+            request, template,
+            {"token": token, "result": parsed, "filename": uploaded.name, "mode": mode},
         )
 
 
@@ -287,6 +317,7 @@ class BookBulkImportConfirmView(LibrarianRequiredMixin, View):
     """2-bosqich: tasdiqlangandan keyin haqiqiy yozish."""
 
     def post(self, request, token):
+        mode = request.POST.get("mode") or bulk_import.MODE_NEW
         path = bulk_import.temp_file_path(token)
         if not path:
             messages.error(
@@ -296,9 +327,14 @@ class BookBulkImportConfirmView(LibrarianRequiredMixin, View):
             return redirect("books:bulk_import")
 
         try:
-            parsed = bulk_import.parse_workbook(path)
-            report = bulk_import.commit_rows(parsed["rows"], user=request.user)
+            if mode == bulk_import.MODE_LOCATION:
+                parsed = bulk_import.parse_locations(path)
+                report = bulk_import.commit_locations(parsed["rows"], user=request.user)
+            else:
+                parsed = bulk_import.parse_workbook(path)
+                report = bulk_import.commit_rows(parsed["rows"], user=request.user)
         except Exception:
+            logger.exception("Excel yozishda xato")
             messages.error(
                 request,
                 "Yozishda xatolik yuz berdi. Faylni tekshirib qaytadan urinib ko'ring.",
@@ -306,6 +342,15 @@ class BookBulkImportConfirmView(LibrarianRequiredMixin, View):
             return redirect("books:bulk_import")
         finally:
             bulk_import.discard_temp_file(token)
+
+        if mode == bulk_import.MODE_LOCATION:
+            messages.success(
+                request,
+                f"Tayyor! {report['books']} ta kitobga joylashuv yozildi"
+                + (f", {report['copies']} ta nusxaga alohida" if report["copies"] else "")
+                + ".",
+            )
+            return redirect("books:shelf_map")
 
         messages.success(
             request,
@@ -316,3 +361,81 @@ class BookBulkImportConfirmView(LibrarianRequiredMixin, View):
             ),
         )
         return redirect(reverse("books:list"))
+
+
+# ===========================================================================
+# Javonlar xaritasi: Xona -> qator -> javon -> taxcha
+# ===========================================================================
+class ShelfMapView(AnyRoleMixin, View):
+    """Har bir xonadagi javonlar va ulardagi kitoblar soni."""
+
+    template_name = "books/shelf_map.html"
+
+    def get(self, request):
+        from apps.books.location import shelf_sort_key
+        from apps.core.models import SystemSetting
+
+        rows = (
+            Book.objects.exclude(shelf="")
+            .values("room", "shelf")
+            .annotate(n=Count("id"))
+        )
+        rooms = {}
+        for item in rows:
+            room = item["room"] or 0
+            shelf = item["shelf"]
+            letter = shelf[-1:]
+            rooms.setdefault(room, {}).setdefault(letter, []).append(
+                {"shelf": shelf, "n": item["n"]}
+            )
+
+        room_count = SystemSetting.get_int("library_rooms", 3)
+        for number in range(1, room_count + 1):
+            rooms.setdefault(number, {})
+
+        room_list = []
+        for number in sorted(rooms, key=lambda r: (r == 0, r)):
+            letters = []
+            for letter in sorted(rooms[number]):
+                shelves = sorted(rooms[number][letter], key=lambda s: shelf_sort_key(s["shelf"]))
+                letters.append({"letter": letter, "shelves": shelves})
+            room_list.append({
+                "number": number,
+                "letters": letters,
+                "books": sum(s["n"] for l in letters for s in l["shelves"]),
+                "shelves": sum(len(l["shelves"]) for l in letters),
+            })
+
+        total = Book.objects.count()
+        placed = Book.objects.exclude(shelf="").count()
+        return render(request, self.template_name, {
+            "rooms": room_list,
+            "total": total,
+            "placed": placed,
+            "unplaced": total - placed,
+            "percent": round(placed * 100 / total) if total else 0,
+        })
+
+
+class ShelfDetailView(AnyRoleMixin, View):
+    """Bitta javon: taxchalar bo'yicha kitoblar."""
+
+    template_name = "books/shelf_detail.html"
+
+    def get(self, request, room, shelf):
+        from apps.books.location import normalize_shelf
+
+        shelf = normalize_shelf(shelf)
+        if not shelf:
+            raise Http404("Javon topilmadi")
+        books = Book.objects.select_related("author", "category").filter(shelf=shelf)
+        books = books.filter(room__isnull=True) if room == 0 else books.filter(room=room)
+        tiers = {}
+        for book in books.order_by("tier", "title"):
+            tiers.setdefault(book.tier or 0, []).append(book)
+        return render(request, self.template_name, {
+            "room": room,
+            "shelf": shelf,
+            "tiers": sorted(tiers.items(), key=lambda kv: (kv[0] == 0, kv[0])),
+            "count": sum(len(v) for v in tiers.values()),
+        })

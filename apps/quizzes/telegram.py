@@ -18,6 +18,8 @@ logger = logging.getLogger(__name__)
 
 API_ROOT = "https://api.telegram.org"
 TIMEOUT = 30
+# Oddiy xabarlar va inline tugmalar bosilishi (so'rovni tasdiqlash)
+ALLOWED_UPDATES = ["message", "callback_query"]
 
 
 class TelegramError(Exception):
@@ -163,14 +165,60 @@ def safe_send(chat_id, text, reply_markup=None):
         return False, str(exc)
 
 
-def notify_admins(text):
+def notify_admins(text, reply_markup=None):
     """Barcha admin chatlarga xabar yuboradi. Yuborilgan chatlar sonini qaytaradi."""
-    sent = 0
+    return len(notify_admins_collect(text, reply_markup=reply_markup))
+
+
+def notify_admins_collect(text, reply_markup=None):
+    """Adminlarga yuboradi va [[chat_id, message_id], ...] qaytaradi.
+
+    Keyinchalik shu xabarlarni tahrirlash uchun (masalan tugmalarni olib
+    tashlab, «Tasdiqlandi» deb yozish).
+    """
+    sent = []
     for chat_id in admin_chat_ids():
-        ok, _ = safe_send(chat_id, text)
-        if ok:
-            sent += 1
+        try:
+            result = send_message(chat_id, text, reply_markup=reply_markup) or {}
+            sent.append([chat_id, result.get("message_id")])
+        except TelegramError as exc:
+            logger.warning("Adminga yuborilmadi (%s): %s", chat_id, exc)
     return sent
+
+
+def edit_message(chat_id, message_id, text, reply_markup=None):
+    """Yuborilgan xabar matnini (va tugmalarini) almashtiradi."""
+    payload = {
+        "chat_id": chat_id,
+        "message_id": message_id,
+        "text": text,
+        "parse_mode": "HTML",
+        "disable_web_page_preview": True,
+    }
+    payload["reply_markup"] = reply_markup or {"inline_keyboard": []}
+    try:
+        api_call("editMessageText", payload, timeout=15)
+        return True
+    except TelegramError as exc:
+        logger.info("Xabar tahrirlanmadi (%s/%s): %s", chat_id, message_id, exc)
+        return False
+
+
+def answer_callback(callback_id, text="", show_alert=False):
+    """Tugma bosilganda Telegram «soat» belgisini to'xtatish uchun javob."""
+    try:
+        api_call(
+            "answerCallbackQuery",
+            {"callback_query_id": callback_id, "text": text[:190], "show_alert": show_alert},
+            timeout=10,
+        )
+    except TelegramError as exc:
+        logger.info("answerCallbackQuery: %s", exc)
+
+
+def is_admin_chat(*ids):
+    admins = set(admin_chat_ids())
+    return any(i in admins for i in ids if i is not None)
 
 
 def get_updates(offset=None, timeout=25, allowed_updates=None):
@@ -212,7 +260,7 @@ def set_webhook(url, secret=None, drop_pending=False):
     """Telegramga yangilanishlarni shu manzilga yuborishni aytadi."""
     payload = {
         "url": url,
-        "allowed_updates": ["message"],
+        "allowed_updates": ALLOWED_UPDATES,
         "drop_pending_updates": bool(drop_pending),
         "max_connections": 20,
     }
@@ -240,6 +288,7 @@ def phone_request_keyboard(button_text="📱 Raqamimni yuborish"):
 def main_menu_keyboard():
     return {
         "keyboard": [
+            [{"text": "📱 Kabinet"}],
             [{"text": "📚 Mening kitoblarim"}, {"text": "📝 Testlarim"}],
             [{"text": "ℹ️ Yordam"}],
         ],
@@ -247,7 +296,20 @@ def main_menu_keyboard():
     }
 
 
+def choice_keyboard(rows):
+    """Oddiy tanlov tugmalari: [["A", "B"], ["C"]]"""
+    return {
+        "keyboard": [[{"text": t} for t in row] for row in rows],
+        "resize_keyboard": True,
+        "one_time_keyboard": True,
+    }
+
+
 def link_keyboard(url, text="📝 Testni boshlash"):
+    """Havola tugmasi. Telegram faqat haqiqiy (https) manzilni qabul qiladi —
+    lokal manzil bo'lsa tugma qo'shilmaydi, havola matnning o'zida qoladi."""
+    if not url or not url.startswith("https://"):
+        return None
     return {"inline_keyboard": [[{"text": text, "url": url}]]}
 
 

@@ -418,3 +418,41 @@ table.data .num { text-align: center; color: var(--muted); width: 50px; }
   body { background: #fff; }
   .card { box-shadow: none; border: 1px solid #ccc; }
 }
+
+/* ---------------------------------------------------------------- Excel rejimi */
+.mode-pick { display: grid; gap: 10px; margin-bottom: 16px; }
+.mode-opt {
+  display: flex; gap: 11px; align-items: flex-start; cursor: pointer;
+  border: 1.5px solid var(--line); border-radius: var(--radius-sm);
+  padding: 12px 14px; background: var(--card);
+}
+.mode-opt:has(input:checked) { border-color: var(--blue); background: var(--blue-soft); }
+.mode-opt input { margin-top: 3px; accent-color: var(--blue); }
+.mode-opt b { display: block; font-size: 13.5px; }
+.mode-opt small { display: block; color: var(--muted); font-size: 12px; margin-top: 2px; line-height: 1.4; }
+
+/* ---------------------------------------------------------------- Javonlar xaritasi */
+.place-bar { height: 8px; border-radius: 20px; background: var(--line); overflow: hidden; }
+.place-bar span { display: block; height: 100%; background: var(--green); border-radius: 20px; }
+.shelf-row { display: flex; gap: 12px; align-items: flex-start; padding: 8px 0; border-bottom: 1px solid var(--line-2, var(--line)); }
+.shelf-row:last-child { border-bottom: 0; }
+.shelf-letter {
+  width: 34px; height: 34px; flex: none; border-radius: 9px;
+  background: var(--navy-2); color: #fff; display: grid; place-items: center;
+  font-weight: 700; font-size: 14px;
+}
+.shelf-tiles { display: flex; flex-wrap: wrap; gap: 7px; }
+.shelf-tile {
+  min-width: 58px; padding: 6px 10px; border-radius: 9px;
+  border: 1px solid var(--line); background: var(--card-2);
+  display: flex; flex-direction: column; align-items: center; text-decoration: none;
+  color: var(--ink);
+}
+.shelf-tile:hover { border-color: var(--blue); background: var(--blue-soft); text-decoration: none; }
+.shelf-tile b { font-size: 13.5px; }
+.shelf-tile span { font-size: 11px; color: var(--muted); }
+.nav-count {
+  margin-left: auto; background: var(--red); color: #fff; border-radius: 20px;
+  font-size: 11px; font-weight: 700; padding: 1px 7px; line-height: 1.5;
+}
+.decide { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }

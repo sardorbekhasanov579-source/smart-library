@@ -28,11 +28,17 @@
         </svg>
         Bosh sahifa
       </a>
-      <a href="{% url 'books:list' %}" class="{% if request.resolver_match.app_name == 'books' %}active{% endif %}">
+      <a href="{% url 'books:list' %}" class="{% if request.resolver_match.app_name == 'books' and request.resolver_match.url_name != 'shelf_map' and request.resolver_match.url_name != 'shelf_detail' %}active{% endif %}">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
           <path d="M5 4.5h9.5a2 2 0 012 2v13H7a2 2 0 01-2-2v-13z"/><path d="M5 17.5h11.5"/>
         </svg>
         Kitoblar
+      </a>
+      <a href="{% url 'books:shelf_map' %}" class="{% if request.resolver_match.url_name == 'shelf_map' or request.resolver_match.url_name == 'shelf_detail' %}active{% endif %}">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <rect x="4" y="3.5" width="16" height="17" rx="1.5"/><path d="M4 9.5h16"/><path d="M4 15h16"/><path d="M12 3.5v17"/>
+        </svg>
+        Javonlar
       </a>
 
       {% if can_manage %}
@@ -45,6 +51,14 @@
         </a>
 
         <div class="nav-section">Operatsiyalar</div>
+        <a href="{% url 'loans:requests' %}" class="{% if request.resolver_match.url_name == 'requests' %}active{% endif %}">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M4 13.5l2.6-7.2A1.5 1.5 0 018 5.3h8a1.5 1.5 0 011.4 1l2.6 7.2V18a1.5 1.5 0 01-1.5 1.5h-13A1.5 1.5 0 014 18v-4.5z"/>
+            <path d="M4 13.5h4.5l1.5 2h4l1.5-2H20"/>
+          </svg>
+          Kitob so'rovlari
+          {% if pending_requests_count %}<span class="nav-count">{{ pending_requests_count }}</span>{% endif %}
+        </a>
         <a href="{% url 'loans:issue' %}" class="{% if request.resolver_match.url_name == 'issue' %}active{% endif %}">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
             <path d="M12 19V6"/><path d="M6.5 11.5L12 6l5.5 5.5"/><path d="M5 19h14"/>

@@ -49,7 +49,7 @@ class Command(BaseCommand):
             try:
                 updates = telegram.get_updates(
                     offset=offset, timeout=options["timeout"],
-                    allowed_updates=["message"],
+                    allowed_updates=telegram.ALLOWED_UPDATES,
                 )
             except telegram.TelegramError as exc:
                 self.stderr.write(f"getUpdates xatosi: {exc}")

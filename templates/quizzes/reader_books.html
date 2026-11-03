@@ -16,12 +16,26 @@
          placeholder="Kitob nomi, muallif, ISBN yoki inventar raqam"
          aria-label="Kitob qidirish">
   {% if only %}<input type="hidden" name="holat" value="{{ only }}">{% endif %}
+  {% if kind %}<input type="hidden" name="tur" value="{{ kind.id }}">{% endif %}
   <button class="go" type="submit" aria-label="Qidirish">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
       <path d="M5 12h13"/><path d="M13 7l5 5-5 5"/>
     </svg>
   </button>
 </form>
+
+{% if kinds %}
+  <div class="kinds" role="navigation" aria-label="Kitob turlari">
+    <a href="?{% query_replace tur=None sahifa=None %}" class="kind {% if not kind %}on{% endif %}">
+      <span class="kn">Barchasi</span><span class="kc">{{ fond_total }}</span>
+    </a>
+    {% for k in kinds %}
+      <a href="?{% query_replace tur=k.id sahifa=None %}" class="kind {% if kind.id == k.id %}on{% endif %}">
+        <span class="kn">{{ k.label }}</span><span class="kc">{{ k.count }}</span>
+      </a>
+    {% endfor %}
+  </div>
+{% endif %}
 
 <div class="filters">
   <a href="?{% query_replace holat=None sahifa=None %}" class="{% if not only %}on{% endif %}">Hammasi</a>
@@ -30,7 +44,7 @@
 
 <p class="result-count">
   {% if is_search %}
-    {{ total }} ta kitob topildi{% if query %} — «{{ query }}»{% endif %}
+    {{ total }} ta kitob{% if kind %} · {{ kind.name }}{% endif %}{% if query %} — «{{ query }}»{% endif %}
   {% else %}
     Fondda {{ fond_total }} ta kitob bor. Oxirgi qo'shilganlari:
   {% endif %}
@@ -70,11 +84,12 @@
                     <path d="M12 21s6.5-5.6 6.5-10.3A6.5 6.5 0 0012 4a6.5 6.5 0 00-6.5 6.7C5.5 15.4 12 21 12 21z"/>
                     <circle cx="12" cy="10.5" r="2.2"/>
                   </svg>
-                  Javon: {{ book.shelf_location }}
+                  {{ book.shelf_location }}
                 </span>
               {% endif %}
 
-              {% if book.category %}<span class="chip plain">{{ book.category.name }}</span>{% endif %}
+              {% if book.category %}<span class="chip plain">{% if book.category.parent %}{{ book.category.parent.name }} · {% endif %}{{ book.category.name }}</span>{% endif %}
+              {% if book.id in holding_ids %}<span class="chip ok">Sizda</span>{% elif book.id in requested_ids %}<span class="chip warn">Tasdiq kutilmoqda</span>{% endif %}
             </div>
           </div>
         </summary>
@@ -92,17 +107,24 @@
               <span class="k">Jami nusxa</span>
               <span class="v">{{ book.total_quantity }} ta ({{ book.available_quantity }} ta mavjud)</span>
             </li>
-            <li>
-              <span class="k">Javon manzili</span>
-              <span class="v">
-                {% if book.shelf_location %}
-                  {{ book.shelf_location }}
-                {% else %}
-                  <span class="muted">ko'rsatilmagan — kutubxonachidan so'rang</span>
-                {% endif %}
-              </span>
-            </li>
           </ul>
+
+          <div class="where">
+            {% with parts=book.shelf_location|joy %}
+              {% if parts %}
+                <div class="where-t">Kitob qayerda turibdi</div>
+                <div class="where-steps">
+                  {% for p in parts %}
+                    <div class="step"><span class="k">{{ p.k }}</span><span class="v">{{ p.v }}</span></div>
+                    {% if not forloop.last %}<span class="arr" aria-hidden="true">›</span>{% endif %}
+                  {% endfor %}
+                </div>
+              {% else %}
+                <div class="where-t">Joyi hali belgilanmagan</div>
+                <div class="small muted">Kutubxonachidan so'rang — tez orada ilovaga yoziladi.</div>
+              {% endif %}
+            {% endwith %}
+          </div>
 
           {% if copies %}
             <div class="section-title" style="margin:13px 2px 7px">
@@ -132,9 +154,29 @@
             <p class="small muted mt">{{ book.description|truncatewords:45 }}</p>
           {% endif %}
 
-          <p class="tiny muted mt-sm">
-            Kitobni olish uchun shu inventar raqamni kutubxonachiga aytsangiz kifoya.
-          </p>
+          {% if book.id in holding_ids %}
+            <p class="small muted mt">Bu kitob hozir sizda. O'qib bo'lgach «Testlar» bo'limidan test topshiring.</p>
+          {% elif book.id in requested_ids %}
+            <p class="small mt" style="color:var(--amber)">So'rovingiz yuborilgan — kutubxonachi tasdiqlashini kuting.</p>
+          {% elif book.available_quantity and can_request %}
+            <form method="post" action="{% url 'quizzes:reader_borrow' book.id %}" class="take-form">
+              {% csrf_token %}
+              <input type="hidden" name="next" value="{% url 'quizzes:portal' %}">
+              {% if copies %}
+                <label class="tiny muted" for="nusxa-{{ book.id }}">Qaysi nusxani oldingiz? (bilmasangiz o'tkazib yuboring)</label>
+                <select name="nusxa" id="nusxa-{{ book.id }}" class="select">
+                  <option value="">Bilmayman</option>
+                  {% for copy in copies %}{% if copy.status == 'available' %}
+                    <option value="{{ copy.id }}">Inv. {{ copy.inventory_number }}</option>
+                  {% endif %}{% endfor %}
+                </select>
+              {% endif %}
+              <button class="btn btn-primary btn-block" type="submit">Shu kitobni oldim</button>
+              <p class="tiny muted center mt-sm">Kutubxonachi tasdiqlagach kitob sizning nomingizga yoziladi.</p>
+            </form>
+          {% elif book.available_quantity %}
+            <p class="small muted mt">Hozir yangi kitob ololmaysiz: limit to'lgan yoki muddati o'tgan kitobingiz bor.</p>
+          {% endif %}
         </div>
       </details>
       {% endwith %}

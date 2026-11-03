@@ -106,3 +106,36 @@ kutubxonachi uchun Faollik reytingida «Daraja» ustuni.
 
 Oxirgi ikkitasi vergul bilan ajratilgan uchta son: Faol, Bilimdon, Oltin
 tartibida. Noto'g'ri yozilsa tizim 0 deb oladi va yiqilmaydi.
+
+---
+
+# Yangi imkoniyatlar (oktyabr 2026)
+
+## Kitob joyi: Xona → Javon → Taxcha
+Har bir kitobda uchta maydon bor: **Xona** (1, 2, 3), **Javon** (1A, 2A … 1B, 2B — har xonada
+1A dan boshlanadi), **Taxcha** (1, 2, 3 …). Ilovada «2-xona · 1A · 3-taxcha» ko'rinishida chiqadi.
+
+- Admin panel → **Javonlar**: har xona bo'yicha qatorlar va javonlar, javonni bossangiz taxchalar bo'yicha kitoblar.
+- Excel'dan yuklash: Kitoblar → «Exseldan qo'shish» → **«Mavjud kitoblarga joylashuv yozish»**.
+  Ustunlar: `Xona | Javon | Taxcha | Kitob nomi | Muallif` (yoki `Inventar` raqami). Avval tahlil
+  ko'rsatiladi (topilgan / topilmagan kitoblar), tasdiqlagach yoziladi.
+
+## Kitob turlari
+Fonddagi ~30 mayda toifa 6 guruhga ajratildi: Badiiy, O'quv, Ilmiy, Ijtimoiy-siyosiy,
+Lug'at va ma'lumotnoma, Boshqa. Ilovaning «Kitoblar» bo'limida tugmalar bilan tanlanadi.
+Yangi toifalar Excel orqali qo'shilganda o'zi guruhlanadi. Qo'lda: `python manage.py turlarga_ajrat`.
+
+## Bot orqali ro'yxatdan o'tish
+Bazada yo'q odam botga /start → raqamini yuboradi → F.I.Sh. va turini tanlaydi → kitobxon
+yaratiladi, adminga xabar keladi. Botdagi **«📱 Kabinet»** tugmasi ilovaga parolsiz kiritadi (1 soat amal qiladi).
+
+## «Shu kitobni oldim» → admin tasdig'i
+Kitobxon ilovada kitobni belgilaydi → adminlarga Telegram'da **✅ Tasdiqlash / ❌ Rad etish** tugmalari
+bilan xabar keladi (yoki panel → **Kitob so'rovlari**). Tasdiqlansa haqiqiy berish operatsiyasi
+yoziladi va kitobxonga xabar boradi.
+
+## Test va AI tahlil
+Kitobxon «Testlarim» bo'limida olgan kitobini tanlab testni o'zi boshlaydi (test bo'lmasa AI fonda tuzadi).
+Natija adminga Telegram'da keladi; kitobxon o'tdi/o'tmadi ko'radi, xato qilgan bo'lsa AI qaysi
+mavzularni qayta o'qish kerakligini aytadi (sahifada va Telegramda). 2 ta urinish beriladi
+(`quiz_self_attempts` sozlamasi).

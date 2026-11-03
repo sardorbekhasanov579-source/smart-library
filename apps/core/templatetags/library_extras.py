@@ -88,3 +88,11 @@ def pretty_phone(value):
         return _pretty(value)
     except Exception:
         return value
+
+
+@register.filter
+def joy(value):
+    """Javon matnini bo'laklarga ajratadi: [{"k": "Xona", "v": "2"}, ...]."""
+    from apps.books.location import location_parts
+
+    return location_parts(value)

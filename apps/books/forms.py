@@ -13,7 +13,7 @@ class BookForm(forms.ModelForm):
         model = Book
         fields = [
             "title", "author", "category", "isbn", "publisher",
-            "publication_year", "shelf_location", "description", "cover",
+            "publication_year", "room", "shelf", "tier", "description", "cover",
         ]
         widgets = {
             "title": forms.TextInput(attrs={**INPUT, "placeholder": "Kitob nomi"}),
@@ -22,9 +22,29 @@ class BookForm(forms.ModelForm):
             "isbn": forms.TextInput(attrs={**INPUT, "placeholder": "978-..."}),
             "publisher": forms.TextInput(attrs=INPUT),
             "publication_year": forms.NumberInput(attrs={**INPUT, "min": 1400, "max": 2100}),
-            "shelf_location": forms.TextInput(attrs={**INPUT, "placeholder": "A-12-3"}),
+            "room": forms.NumberInput(attrs={**INPUT, "min": 1, "max": 99, "placeholder": "2"}),
+            "shelf": forms.TextInput(attrs={**INPUT, "placeholder": "1A"}),
+            "tier": forms.NumberInput(attrs={**INPUT, "min": 1, "max": 99, "placeholder": "3"}),
             "description": forms.Textarea(attrs=AREA),
         }
+        help_texts = {
+            "room": "Kitob turgan xona raqami",
+            "shelf": "Qatordagi javon: 1A, 2A ... 1B, 2B",
+            "tier": "Javonning nechanchi taxchasi",
+        }
+
+    def clean_shelf(self):
+        from apps.books.location import normalize_shelf
+
+        raw = (self.cleaned_data.get("shelf") or "").strip()
+        if not raw:
+            return ""
+        shelf = normalize_shelf(raw)
+        if not shelf:
+            raise forms.ValidationError(
+                "Javon raqam va harfdan iborat bo'lsin, masalan: 1A, 2B, 12C."
+            )
+        return shelf
 
     def clean_isbn(self):
         isbn = (self.cleaned_data.get("isbn") or "").strip()
@@ -73,8 +93,17 @@ class BookCopyBulkForm(forms.Form):
 
 
 class BookBulkImportForm(forms.Form):
-    """Excel fayldan ko'plab kitob qo'shish uchun yuklash formasi."""
+    """Excel fayldan ko'plab kitob qo'shish yoki joylashuvni yuklash formasi."""
 
+    MODE_CHOICES = (
+        ("yangi", "Yangi kitoblar qo'shish"),
+        ("joy", "Mavjud kitoblarga joylashuv yozish (xona, javon, taxcha)"),
+    )
+
+    mode = forms.ChoiceField(
+        label="Nima qilamiz?", choices=MODE_CHOICES, initial="yangi",
+        widget=forms.RadioSelect,
+    )
     file = forms.FileField(
         label="Excel fayl (.xlsx)",
         widget=forms.ClearableFileInput(attrs={
